@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WARWATCH · Platform Summary Report v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#03080f;--bg2:#050d1a;--card:#070f1e;
+  --border:rgba(0,180,220,0.18);--border2:rgba(255,48,48,0.2);
+  --cyn:#00e5ff;--grn:#39ff6a;--amb:#ffaa00;--red:#ff3030;
+  --txt:#8ab8cc;--txt2:#2a5a70;
+  --critical:#ff2020;--high:#ff6600;--medium:#ffcc00;--monitor:#00aaff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{background:var(--bg);color:var(--txt);font-family:'Rajdhani',sans-serif;font-size:15px;line-height:1.7;}
+
+/* ── COVER ── */
+#cover{
+  min-height:100vh;
+  background:radial-gradient(ellipse 80% 60% at 50% 0%,rgba(0,180,220,.07) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%,rgba(255,48,48,.06) 0%,transparent 55%),var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:60px 40px;border-bottom:1px solid var(--border2);
+  position:relative;overflow:hidden;
+}
+#cover::before{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 40px,rgba(0,180,220,.015) 40px,rgba(0,180,220,.015) 41px);}
+#cover::after{content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(90deg,transparent,transparent 60px,rgba(0,180,220,.012) 60px,rgba(0,180,220,.012) 61px);}
+.cover-content{position:relative;z-index:1;}
+.cover-badge{display:inline-block;border:1px solid var(--border2);padding:4px 18px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:4px;
+  color:var(--red);background:rgba(255,48,48,.05);margin-bottom:24px;}
+.cover-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(56px,10vw,110px);
+  color:var(--cyn);letter-spacing:12px;text-shadow:0 0 40px rgba(0,229,255,.4),0 0 80px rgba(0,229,255,.15);line-height:1;}
+.cover-sub{font-family:'Bebas Neue',sans-serif;font-size:clamp(18px,3vw,28px);
+  color:var(--red);letter-spacing:8px;margin-top:8px;text-shadow:0 0 20px rgba(255,48,48,.4);}
+.cover-version-badge{display:inline-block;background:rgba(57,255,106,.07);border:1px solid rgba(57,255,106,.4);
+  color:var(--grn);font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;
+  padding:3px 14px;margin-top:12px;}
+.cover-desc{max-width:700px;margin:28px auto 0;font-size:15px;color:var(--txt2);line-height:1.8;}
+.cover-meta{margin-top:40px;display:flex;gap:32px;justify-content:center;flex-wrap:wrap;}
+.cover-stat{text-align:center;}
+.cover-stat-val{font-family:'Bebas Neue',sans-serif;font-size:40px;letter-spacing:2px;line-height:1;}
+.cover-stat-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--txt2);margin-top:2px;}
+.cover-divider{width:80px;height:1px;background:linear-gradient(90deg,transparent,var(--cyn),transparent);margin:32px auto;}
+.cover-version{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:3px;color:var(--txt2);}
+
+/* ── LAYOUT ── */
+.container{max-width:1100px;margin:0 auto;padding:60px 32px;}
+
+/* ── SECTION HEADERS ── */
+.section-header{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.section-num{font-family:'Bebas Neue',sans-serif;font-size:11px;color:var(--txt2);letter-spacing:3px;min-width:28px;}
+.section-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:5px;color:var(--cyn);text-shadow:0 0 16px rgba(0,229,255,.2);}
+.section-tag{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:2px;color:var(--red);
+  border:1px solid rgba(255,48,48,.4);padding:2px 8px;background:rgba(255,48,48,.04);margin-left:auto;white-space:nowrap;}
+.section-new{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:2px;
+  background:rgba(57,255,106,.1);border:1px solid rgba(57,255,106,.5);color:var(--grn);
+  padding:2px 8px;margin-left:6px;}
+.section-block{margin-bottom:64px;}
+
+/* ── CARDS ── */
+.card-grid{display:grid;gap:14px;}
+.card-grid-2{grid-template-columns:repeat(auto-fit,minmax(280px,1fr));}
+.card-grid-3{grid-template-columns:repeat(auto-fit,minmax(220px,1fr));}
+.card-grid-4{grid-template-columns:repeat(auto-fit,minmax(180px,1fr));}
+.card{background:var(--card);border:1px solid var(--border);padding:20px 22px;position:relative;overflow:hidden;transition:border-color .2s;}
+.card:hover{border-color:rgba(0,229,255,.3);}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--cyn),transparent);opacity:.4;}
+.card.red::before{background:linear-gradient(90deg,var(--red),transparent);}
+.card.amb::before{background:linear-gradient(90deg,var(--amb),transparent);}
+.card.grn::before{background:linear-gradient(90deg,var(--grn),transparent);}
+.card.blue::before{background:linear-gradient(90deg,#4488ff,transparent);}
+.card.new-feature{border-color:rgba(57,255,106,.35);}
+.card.new-feature::after{content:'NEW';position:absolute;top:8px;right:8px;
+  font-family:'Share Tech Mono',monospace;font-size:7px;letter-spacing:2px;
+  background:rgba(57,255,106,.12);border:1px solid rgba(57,255,106,.5);color:var(--grn);padding:1px 5px;}
+.card-icon{font-size:22px;margin-bottom:10px;display:block;}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:3px;color:var(--cyn);margin-bottom:8px;}
+.card.red .card-title{color:var(--red);}
+.card.amb .card-title{color:var(--amb);}
+.card.grn .card-title{color:var(--grn);}
+.card.blue .card-title{color:#4488ff;}
+.card p{font-size:13px;color:var(--txt2);line-height:1.7;}
+.card-big-num{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--cyn);letter-spacing:2px;line-height:1;text-shadow:0 0 16px rgba(0,229,255,.3);}
+.card.red .card-big-num{color:var(--red);text-shadow:0 0 14px rgba(255,48,48,.3);}
+.card.amb .card-big-num{color:var(--amb);}
+.card.grn .card-big-num{color:var(--grn);}
+.card.blue .card-big-num{color:#4488ff;}
+.card-big-sub{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--txt2);margin-top:2px;}
+
+/* ── FEATURE ROWS ── */
+.feature-row{display:flex;gap:0;background:var(--card);border:1px solid var(--border);margin-bottom:10px;overflow:hidden;transition:border-color .2s;}
+.feature-row:hover{border-color:rgba(0,229,255,.25);}
+.feature-row.new-feature{border-color:rgba(57,255,106,.3);}
+.feature-icon-col{width:56px;display:flex;align-items:center;justify-content:center;
+  font-size:20px;background:rgba(0,229,255,.03);border-right:1px solid var(--border);flex-shrink:0;}
+.feature-body{padding:14px 18px;flex:1;}
+.feature-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:3px;color:var(--cyn);margin-bottom:4px;}
+.feature-desc{font-size:13px;color:var(--txt2);}
+.feature-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+.tag{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;padding:2px 7px;border:1px solid;}
+.tag-cyn{color:var(--cyn);border-color:rgba(0,229,255,.3);background:rgba(0,229,255,.04);}
+.tag-grn{color:var(--grn);border-color:rgba(57,255,106,.3);background:rgba(57,255,106,.04);}
+.tag-amb{color:var(--amb);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.04);}
+.tag-red{color:var(--red);border-color:rgba(255,48,48,.3);background:rgba(255,48,48,.04);}
+.tag-new{color:var(--grn);border-color:var(--grn);background:rgba(57,255,106,.08);font-weight:bold;}
+
+/* ── CONFLICT TABLE ── */
+.conflict-table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:11px;}
+.conflict-table th{background:rgba(0,229,255,.05);border:1px solid var(--border);padding:8px 12px;
+  text-align:left;color:var(--cyn);letter-spacing:2px;font-size:9px;font-weight:400;}
+.conflict-table td{border:1px solid rgba(0,40,60,.6);padding:7px 12px;color:var(--txt2);vertical-align:middle;}
+.conflict-table tr:hover td{background:rgba(0,229,255,.02);}
+.sev{display:inline-block;padding:1px 6px;font-size:8px;letter-spacing:1px;}
+.sev-critical{color:var(--critical);border:1px solid var(--critical);background:rgba(255,0,0,.07);}
+.sev-high{color:var(--high);border:1px solid var(--high);background:rgba(255,100,0,.06);}
+.sev-medium{color:var(--medium);border:1px solid var(--medium);background:rgba(255,200,0,.05);}
+.sev-monitor{color:var(--monitor);border:1px solid var(--monitor);background:rgba(0,170,255,.05);}
+
+/* ── BASEMAP GRID ── */
+.bm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;}
+.bm-card{background:var(--card);border:1px solid var(--border);padding:14px 16px;text-align:center;}
+.bm-icon{font-size:24px;margin-bottom:6px;}
+.bm-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--cyn);}
+.bm-source{font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--txt2);letter-spacing:1px;margin-top:3px;}
+
+/* ── PARAM GRID ── */
+.param-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:700px){.param-grid{grid-template-columns:1fr;}}
+.param-card{background:var(--card);border:1px solid var(--border);padding:18px;}
+.param-card-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.param-row{display:flex;justify-content:space-between;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(0,20,40,.6);font-family:'Share Tech Mono',monospace;font-size:10px;}
+.param-key{color:var(--txt2);}
+.param-val{color:var(--cyn);}
+.param-val.red{color:var(--red);}
+.param-val.grn{color:var(--grn);}
+.param-val.amb{color:var(--amb);}
+
+/* ── SQUAWK TABLE ── */
+.squawk-table{width:100%;border-collapse:collapse;font-family:'Share Tech Mono',monospace;font-size:11px;margin-top:12px;}
+.squawk-table th{padding:6px 12px;text-align:left;font-size:8px;letter-spacing:2px;font-weight:400;border-bottom:1px solid var(--border);}
+.squawk-table td{padding:7px 12px;border-bottom:1px solid rgba(0,20,40,.6);}
+
+/* ── TECH STACK ── */
+.stack-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;}
+.stack-item{background:var(--card);border:1px solid var(--border);padding:14px 16px;display:flex;align-items:flex-start;gap:12px;}
+.stack-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:5px;}
+.stack-name{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:2px;color:var(--cyn);}
+.stack-role{font-size:11px;color:var(--txt2);font-family:'Share Tech Mono',monospace;letter-spacing:.5px;margin-top:2px;}
+
+/* ── ROADMAP ── */
+.roadmap{position:relative;padding-left:28px;}
+.roadmap::before{content:'';position:absolute;left:8px;top:8px;bottom:8px;width:1px;background:linear-gradient(180deg,var(--cyn),var(--red));opacity:.25;}
+.rm-item{position:relative;margin-bottom:20px;}
+.rm-item::before{content:'';position:absolute;left:-24px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2px solid var(--cyn);}
+.rm-title{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--cyn);margin-bottom:4px;}
+.rm-desc{font-size:13px;color:var(--txt2);}
+
+/* ── NOTES ── */
+.alert-note{border:1px solid rgba(255,170,0,.4);background:rgba(255,170,0,.04);padding:14px 18px;margin:20px 0;
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--amb);letter-spacing:.5px;line-height:1.8;}
+.success-note{border:1px solid rgba(57,255,106,.3);background:rgba(57,255,106,.03);padding:14px 18px;margin:20px 0;
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--grn);letter-spacing:.5px;line-height:1.8;}
+.info-note{border:1px solid var(--border);background:rgba(0,229,255,.03);padding:14px 18px;margin:20px 0;
+  font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyn);letter-spacing:.5px;line-height:1.8;}
+
+/* ── CHANGELOG ── */
+.changelog{display:flex;flex-direction:column;gap:10px;}
+.cl-item{display:flex;gap:12px;align-items:flex-start;background:var(--card);border:1px solid var(--border);padding:12px 16px;}
+.cl-badge{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;padding:2px 10px;flex-shrink:0;margin-top:1px;}
+.cl-new{background:rgba(57,255,106,.1);border:1px solid rgba(57,255,106,.5);color:var(--grn);}
+.cl-imp{background:rgba(0,229,255,.08);border:1px solid rgba(0,229,255,.4);color:var(--cyn);}
+.cl-fix{background:rgba(255,170,0,.07);border:1px solid rgba(255,170,0,.4);color:var(--amb);}
+.cl-text{font-size:13px;color:var(--txt2);}
+.cl-text strong{color:#b0d8e8;}
+
+/* ── FOOTER ── */
+#footer{border-top:1px solid var(--border);background:var(--bg2);padding:32px;text-align:center;}
+.footer-logo{font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--cyn);letter-spacing:8px;opacity:.5;}
+.footer-meta{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--txt2);letter-spacing:3px;margin-top:8px;}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:#002244;}
+
+#print-btn{position:fixed;bottom:24px;right:24px;z-index:999;background:rgba(0,229,255,.1);
+  border:1px solid var(--cyn);color:var(--cyn);font-family:'Share Tech Mono',monospace;
+  font-size:9px;letter-spacing:2px;padding:8px 16px;cursor:pointer;transition:background .2s;}
+#print-btn:hover{background:rgba(0,229,255,.18);}
+@media print{#print-btn{display:none;}}
+p{margin-bottom:10px;}
+strong{color:#b0d8e8;font-weight:600;}
+.mono{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--cyn);}
+</style>
+</head>
+<body>
+
+<button id="print-btn" onclick="window.print()">⎙ EXPORT / PRINT</button>
+
+<!-- ══════════ COVER ══════════ -->
+<div id="cover">
+  <div class="cover-content">
+    <div class="cover-badge">OSINT · UNCLASSIFIED · PUBLIC DATA ONLY</div>
+    <div class="cover-title">WARWATCH</div>
+    <div class="cover-sub">GLOBAL CONFLICT MONITOR</div>
+    <div class="cover-version-badge">★ VERSION 2 · REVISED SUMMARY REPORT</div>
+    <div class="cover-divider"></div>
+    <div class="cover-desc">
+      A fully browser-based, real-time Open Source Intelligence (OSINT) geospatial platform. Now upgraded with a <strong>Live Flight Tracker</strong> with squawk alert detection, a <strong>Live Fleet Tracker</strong> with 21 vessels and AIS dark vessel monitoring, and OpenSeaMap tile integration — all running in a single HTML file with zero install, zero API keys.
+    </div>
+    <div class="cover-meta">
+      <div class="cover-stat"><div class="cover-stat-val" style="color:var(--red)">43</div><div class="cover-stat-lbl">CONFLICT ZONES</div></div>
+      <div class="cover-stat"><div class="cover-stat-val" style="color:var(--grn)">LIVE</div><div class="cover-stat-lbl">ADS-B AIRCRAFT</div></div>
+      <div class="cover-stat"><div class="cover-stat-val" style="color:#4488ff">21</div><div class="cover-stat-lbl">VESSELS TRACKED</div></div>
+      <div class="cover-stat"><div class="cover-stat-val" style="color:var(--amb)">6</div><div class="cover-stat-lbl">BASEMAPS</div></div>
+      <div class="cover-stat"><div class="cover-stat-val" style="color:var(--medium)">9</div><div class="cover-stat-lbl">OSINT LAYERS</div></div>
+      <div class="cover-stat"><div class="cover-stat-val" style="color:var(--cyn)">0</div><div class="cover-stat-lbl">API KEYS NEEDED</div></div>
+    </div>
+    <div class="cover-divider"></div>
+    <div class="cover-version">WARWATCH v4.0 · BUILD 2026 · REVISED PLATFORM SUMMARY REPORT</div>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ══════ SECTION 0: CHANGELOG ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">00</span>
+    <span class="section-title">WHAT'S NEW IN V2</span>
+    <span class="section-tag">CHANGELOG</span>
+  </div>
+  <div class="changelog">
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>Live Flight Tracker Panel</strong> — Full dedicated panel with real-time aircraft table, 8 region filters, squawk emergency detection (7700/7600/7500), altitude stats, nation count, and click-to-fly-to on any aircraft.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>Live Fleet Tracker Panel</strong> — 21 vessels tracked including 7 carrier strike groups. Full filterable table with vessel type, speed, heading, status. Chokepoint quick-fly buttons for Hormuz, Bab-el-Mandeb, Suez.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>AIS Dark Vessel Monitor</strong> — Dedicated section tracking 5 vessels that have turned off their AIS transponders, with last known position and hours-dark counter.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>OpenSeaMap Tile Overlay</strong> — Community-sourced live AIS vessel and seamark tiles layered on the map background for real maritime traffic visualization.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>Squawk Alert System</strong> — Automatic detection and highlighting of emergency transponder codes: 7700 (General Emergency), 7600 (Radio Failure), 7500 (Hijacking). Red alert strip fires on detection.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-new">NEW</span><div class="cl-text"><strong>Tracker Tab Interface</strong> — Tabbed panel system allowing instant switch between Live Flight Tracker and Live Fleet Tracker without leaving the map.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-imp">IMPROVED</span><div class="cl-text"><strong>ADS-B Data Pipeline</strong> — Live OpenSky data now feeds simultaneously into the map markers, the right panel list, AND the new Flight Tracker panel. All three sync on every 15-second refresh.</div></div>
+    <div class="cl-item"><span class="cl-badge cl-imp">IMPROVED</span><div class="cl-text"><strong>File renamed to index.html</strong> — Clean URL with no filename required: <span class="mono">https://samyvishnu.github.io/warwatch/</span></div></div>
+    <div class="cl-item"><span class="cl-badge cl-fix">FIXED</span><div class="cl-text"><strong>Vessel data expanded</strong> — From 10 static vessels to 21 fully tracked assets including additional US carrier groups (USS Truman), Japanese JMSDF (JS Izumo), IRGCN frigate, and extended commercial shipping.</div></div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 1: OVERVIEW ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <span class="section-title">PLATFORM OVERVIEW</span>
+    <span class="section-tag">WHAT IS WARWATCH</span>
+  </div>
+  <p><strong>WARWATCH</strong> is a fully self-contained, browser-based geospatial intelligence dashboard that aggregates, visualizes, and monitors global conflict data in real time. Every data source is publicly accessible — no classified feeds, no paid APIs, no authentication required. The platform runs as a single <strong>index.html</strong> file — open it in any modern browser and the full intelligence picture loads instantly.</p>
+  <p>Version 2 adds two major new dedicated tracker panels — a <strong>Live Flight Tracker</strong> and a <strong>Live Fleet Tracker</strong> — each with full filterable data tables, emergency alert systems, click-to-navigate functionality, and real-time data synced with the map.</p>
+  <div class="success-note">
+    ✓ ZERO BACKEND — runs entirely in-browser as a single HTML file<br>
+    ✓ ZERO API KEYS — all data sources are open and free<br>
+    ✓ ZERO INSTALL — open in Chrome, Firefox, Edge, or Safari<br>
+    ✓ CLEAN URL — renamed to index.html for shortest possible shareable link<br>
+    ✓ NEW: Live Flight Tracker · Live Fleet Tracker · Squawk Detection · OpenSeaMap
+  </div>
+  <div class="card-grid card-grid-4" style="margin-top:24px;">
+    <div class="card red"><span class="card-icon">🌍</span><div class="card-title">CONFLICT MONITOR</div><p>43 active zones with severity, actors, casualties and live event feeds.</p></div>
+    <div class="card grn new-feature"><span class="card-icon">✈</span><div class="card-title">LIVE FLIGHT TRACKER</div><p>Full panel with real ADS-B, squawk detection, 8 filters, click-to-fly.</p></div>
+    <div class="card blue new-feature"><span class="card-icon">⚓</span><div class="card-title">LIVE FLEET TRACKER</div><p>21 vessels, 7 CSGs, AIS dark monitor, chokepoint navigation.</p></div>
+    <div class="card"><span class="card-icon">🛰</span><div class="card-title">SAT TRACKS</div><p>16 orbital assets animated along TLE-derived ground tracks.</p></div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 2: LIVE FLIGHT TRACKER ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <span class="section-title">LIVE FLIGHT TRACKER</span>
+    <span class="section-tag">NEW · OPENSKY NETWORK</span>
+    <span class="section-new">★ NEW</span>
+  </div>
+  <p>The <strong>Live Flight Tracker</strong> is a dedicated full-panel interface opened by clicking <strong>"✈ LIVE FLIGHTS"</strong> in the topbar. It displays every airborne aircraft in the OpenSky bounding box in a scrollable, filterable real-time table — fully synced with the map markers on every 15-second refresh cycle.</p>
+
+  <div class="card-grid card-grid-4" style="margin-bottom:24px;">
+    <div class="card grn"><div class="card-big-num">—</div><div class="card-big-sub">AIRBORNE (LIVE)</div></div>
+    <div class="card"><div class="card-big-num" style="color:var(--amb)">—</div><div class="card-big-sub">HIGH ALT (&gt;10km)</div></div>
+    <div class="card red"><div class="card-big-num">0</div><div class="card-big-sub">SQUAWK ALERTS</div></div>
+    <div class="card"><div class="card-big-num" style="color:var(--cyn)">—</div><div class="card-big-sub">NATIONS TRACKED</div></div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">🚨</div>
+    <div class="feature-body">
+      <div class="feature-title" style="color:var(--red);">SQUAWK EMERGENCY DETECTION SYSTEM</div>
+      <div class="feature-desc">Automatically scans every incoming ADS-B state for emergency transponder codes. When detected, the row is highlighted in red/amber/purple and a red alert strip fires at the top of the panel with the callsign and emergency type. Three codes are monitored:</div>
+      <table class="squawk-table">
+        <thead><tr>
+          <th style="color:var(--red);">CODE</th>
+          <th style="color:var(--txt2);">MEANING</th>
+          <th style="color:var(--txt2);">ROW COLOR</th>
+          <th style="color:var(--txt2);">ALERT</th>
+        </tr></thead>
+        <tbody>
+          <tr><td style="color:var(--red);font-weight:bold;">7700</td><td style="color:var(--txt2);">General Emergency / Mayday</td><td style="color:var(--red);">Red highlight</td><td style="color:var(--red);">EMERGENCY</td></tr>
+          <tr><td style="color:var(--amb);font-weight:bold;">7600</td><td style="color:var(--txt2);">Radio Communication Failure</td><td style="color:var(--amb);">Amber highlight</td><td style="color:var(--amb);">RADIO FAIL</td></tr>
+          <tr><td style="color:#ff00ff;font-weight:bold;">7500</td><td style="color:var(--txt2);">Unlawful Interference / Hijack</td><td style="color:#ff00ff;">Purple highlight</td><td style="color:#ff00ff);">HIJACK</td></tr>
+        </tbody>
+      </table>
+      <div class="feature-tags">
+        <span class="tag tag-red">AUTO-DETECTION</span>
+        <span class="tag tag-red">REAL-TIME</span>
+        <span class="tag tag-grn">LIVE ADS-B DATA</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">🔍</div>
+    <div class="feature-body">
+      <div class="feature-title">8 REGION / TYPE FILTERS</div>
+      <div class="feature-desc">One-click filters that instantly narrow the aircraft list to a specific category or geographic region. Filters apply to the table only — the map continues showing all aircraft.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px;">
+        <div style="background:rgba(57,255,106,.05);border:1px solid rgba(57,255,106,.3);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--grn);">ALL — Full global list</div>
+        <div style="background:rgba(0,229,255,.05);border:1px solid rgba(0,229,255,.3);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--cyn);">HIGH ALT — &gt;10,000m</div>
+        <div style="background:rgba(255,170,0,.05);border:1px solid rgba(255,170,0,.3);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--amb);">LOW ALT — &lt;3,000m</div>
+        <div style="background:rgba(255,48,48,.05);border:1px solid rgba(255,48,48,.3);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--red);">⚠ SQUAWK — Emergency codes</div>
+        <div style="background:rgba(0,229,255,.04);border:1px solid var(--border);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">MIDDLE EAST — lat 12–40, lon 28–65</div>
+        <div style="background:rgba(0,229,255,.04);border:1px solid var(--border);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">EUROPE — lat 36–72, lon -12–40</div>
+        <div style="background:rgba(0,229,255,.04);border:1px solid var(--border);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">ASIA — lat 10–55, lon 65–145</div>
+        <div style="background:rgba(0,229,255,.04);border:1px solid var(--border);padding:6px 10px;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">AMERICAS — lat -60–72, lon -170–-30</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">🖱️</div>
+    <div class="feature-body">
+      <div class="feature-title">CLICK-TO-FLY NAVIGATION</div>
+      <div class="feature-desc">Every row in the flight table is clickable. Clicking any aircraft row flies the map to that aircraft's current coordinates at zoom level 8, closes the tracker panel automatically, and shows a toast notification confirming the tracked callsign and coordinates. Real-time navigation intelligence.</div>
+      <div class="feature-tags">
+        <span class="tag tag-cyn">MAP FLY-TO</span>
+        <span class="tag tag-cyn">ZOOM LEVEL 8</span>
+        <span class="tag tag-grn">TOAST CONFIRM</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="param-grid" style="margin-top:20px;">
+    <div class="param-card">
+      <div class="param-card-title" style="color:var(--grn);">✈ FLIGHT DATA PARAMS</div>
+      <div class="param-row"><span class="param-key">SOURCE</span><span class="param-val">OpenSky Network</span></div>
+      <div class="param-row"><span class="param-key">REFRESH</span><span class="param-val grn">15 seconds</span></div>
+      <div class="param-row"><span class="param-key">ICAO24 HEX</span><span class="param-val">✓</span></div>
+      <div class="param-row"><span class="param-key">CALLSIGN</span><span class="param-val">✓</span></div>
+      <div class="param-row"><span class="param-key">ALTITUDE (m)</span><span class="param-val">✓ barometric</span></div>
+      <div class="param-row"><span class="param-key">SPEED (kt)</span><span class="param-val">✓ m/s → kts</span></div>
+      <div class="param-row"><span class="param-key">HEADING °</span><span class="param-val">✓</span></div>
+      <div class="param-row"><span class="param-key">SQUAWK CODE</span><span class="param-val red">✓ 7700/7600/7500</span></div>
+      <div class="param-row"><span class="param-key">COUNTRY</span><span class="param-val">✓</span></div>
+      <div class="param-row"><span class="param-key">ON GROUND</span><span class="param-val">✓ filtered out</span></div>
+      <div class="param-row"><span class="param-key">TABLE ROWS</span><span class="param-val">Top 100 shown</span></div>
+    </div>
+    <div class="param-card">
+      <div class="param-card-title" style="color:var(--cyn);">📊 LIVE STATS PANEL</div>
+      <div class="param-row"><span class="param-key">AIRBORNE COUNT</span><span class="param-val grn">Live</span></div>
+      <div class="param-row"><span class="param-key">HIGH ALT (&gt;10km)</span><span class="param-val">Live calc</span></div>
+      <div class="param-row"><span class="param-key">SQUAWK ALERTS</span><span class="param-val red">Live count</span></div>
+      <div class="param-row"><span class="param-key">NATIONS COUNT</span><span class="param-val">Unique set</span></div>
+      <div class="param-row"><span class="param-key">NEXT REFRESH</span><span class="param-val">Countdown</span></div>
+      <div class="param-row"><span class="param-key">LAST UPDATE TIME</span><span class="param-val">UTC timestamp</span></div>
+    </div>
+    <div class="param-card">
+      <div class="param-card-title" style="color:var(--amb);">🎨 ALTITUDE COLOR CODE</div>
+      <div class="param-row"><span class="param-key">No signal / &lt;0</span><span class="param-val" style="color:#4488ff;">BLUE</span></div>
+      <div class="param-row"><span class="param-key">&lt;3,000m</span><span class="param-val amb">AMBER</span></div>
+      <div class="param-row"><span class="param-key">3,000–8,000m</span><span class="param-val" style="color:#ffdd00;">YELLOW</span></div>
+      <div class="param-row"><span class="param-key">8,000–12,000m</span><span class="param-val cyn">CYAN</span></div>
+      <div class="param-row"><span class="param-key">&gt;12,000m</span><span class="param-val grn">GREEN</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 3: LIVE FLEET TRACKER ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <span class="section-title">LIVE FLEET TRACKER</span>
+    <span class="section-tag">NEW · 21 VESSELS · AIS DARK MONITOR</span>
+    <span class="section-new">★ NEW</span>
+  </div>
+  <p>The <strong>Live Fleet Tracker</strong> is opened by clicking <strong>"⚓ LIVE FLEET"</strong> in the topbar. It provides a comprehensive view of 21 tracked naval and commercial vessels, organized by type with real-time status indicators, a dedicated AIS dark vessel alert section, and one-click navigation to any maritime chokepoint.</p>
+
+  <div class="card-grid card-grid-4" style="margin-bottom:24px;">
+    <div class="card red"><div class="card-big-num">7</div><div class="card-big-sub">CARRIER STRIKE GROUPS</div></div>
+    <div class="card blue"><div class="card-big-num">14</div><div class="card-big-sub">TOTAL TRACKED VESSELS</div></div>
+    <div class="card red"><div class="card-big-num">5</div><div class="card-big-sub">AIS DARK VESSELS</div></div>
+    <div class="card amb"><div class="card-big-num">7</div><div class="card-big-sub">CHOKEPOINTS MONITORED</div></div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">🚢</div>
+    <div class="feature-body">
+      <div class="feature-title">21 VESSEL DATABASE — FULL BREAKDOWN</div>
+      <div class="feature-desc">All vessels tracked with name, type, flag, speed, heading, force assignment, and operational status.</div>
+      <table class="conflict-table" style="margin-top:10px;">
+        <thead><tr><th>VESSEL</th><th>TYPE</th><th>FLAG</th><th>FORCE</th><th>STATUS</th></tr></thead>
+        <tbody>
+          <tr><td style="color:#ff6644;">USS GERALD R. FORD CVN-78</td><td>CARRIER</td><td>🇺🇸</td><td>USN CSG-12</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff6644;">USS DWIGHT D. EISENHOWER CVN-69</td><td>CARRIER</td><td>🇺🇸</td><td>USN CSG-2</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff6644;">USS HARRY S. TRUMAN CVN-75</td><td>CARRIER</td><td>🇺🇸</td><td>USN CSG-8</td><td style="color:var(--cyn);">TRANSIT</td></tr>
+          <tr><td style="color:#ff8844;">HMS PRINCE OF WALES R09</td><td>CARRIER</td><td>🇬🇧</td><td>RN CSG</td><td style="color:var(--cyn);">EXERCISE</td></tr>
+          <tr><td style="color:#ff8844;">FS CHARLES DE GAULLE R91</td><td>CARRIER</td><td>🇫🇷</td><td>MN CSG</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff4444;">CSS SHANDONG CV-17</td><td>CARRIER</td><td>🇨🇳</td><td>PLAN CSG</td><td style="color:var(--cyn);">EXERCISE</td></tr>
+          <tr><td style="color:#ff8844;">JS IZUMO DDH-183</td><td>CARRIER</td><td>🇯🇵</td><td>JMSDF</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff6644;">USS ARLEIGH BURKE DDG-51</td><td>DESTROYER</td><td>🇺🇸</td><td>USN</td><td style="color:var(--red);">INTERCEPT</td></tr>
+          <tr><td style="color:#ff8844;">HMS DIAMOND D34</td><td>DESTROYER</td><td>🇬🇧</td><td>RN</td><td style="color:var(--cyn);">ESCORT</td></tr>
+          <tr><td style="color:#ff8844;">FS LANGUEDOC D643</td><td>FRIGATE</td><td>🇫🇷</td><td>MN</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff6644;">USS COLE DDG-67</td><td>DESTROYER</td><td>🇺🇸</td><td>USN</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#ff4444;">IRGCN SAHAND F-74</td><td>FRIGATE</td><td>🇮🇷</td><td>IRGCN</td><td style="color:var(--grn);">PATROL</td></tr>
+          <tr><td style="color:#4488ff;">MT BASRA WIND</td><td>TANKER</td><td>🇮🇷</td><td>CIVILIAN</td><td style="color:var(--grn);">LOADING</td></tr>
+          <tr><td style="color:var(--red);">MV GALAXY LEADER</td><td>CARGO</td><td>—</td><td>SEIZED-HOUTHI</td><td style="color:var(--red);">SEIZED</td></tr>
+          <tr><td style="color:var(--amb);">MV RED PIONEER</td><td>CARGO</td><td>🇲🇭</td><td>REROUTED</td><td style="color:var(--amb);">DIVERT</td></tr>
+          <tr><td style="color:#4488ff;">MT GULF NAVIGATOR</td><td>TANKER</td><td>🇸🇦</td><td>CIVILIAN</td><td style="color:var(--cyn);">TRANSIT</td></tr>
+          <tr><td style="color:#4488ff;">MV EASTERN COAST</td><td>CARGO</td><td>🇸🇬</td><td>CIVILIAN</td><td style="color:var(--amb);">AVOIDING</td></tr>
+          <tr style="background:rgba(255,48,48,.05);"><td style="color:var(--red);">UNKNOWN VESSEL-01</td><td>UNKNOWN</td><td>—</td><td>—</td><td style="color:var(--red);">AIS DARK 4.2h</td></tr>
+          <tr style="background:rgba(255,48,48,.05);"><td style="color:var(--red);">IRAN VESSEL (UNCONFIRMED)</td><td>UNKNOWN</td><td>🇮🇷</td><td>—</td><td style="color:var(--red);">AIS DARK 11.3h</td></tr>
+          <tr style="background:rgba(255,48,48,.05);"><td style="color:var(--red);">UNKNOWN VESSEL-02</td><td>UNKNOWN</td><td>—</td><td>—</td><td style="color:var(--red);">AIS DARK 2.1h</td></tr>
+          <tr style="background:rgba(255,48,48,.05);"><td style="color:var(--red);">MV ALTAI-3 (DARK)</td><td>CARGO</td><td>—</td><td>—</td><td style="color:var(--red);">AIS DARK 6.7h</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">⬤</div>
+    <div class="feature-body">
+      <div class="feature-title" style="color:var(--red);">AIS DARK VESSEL MONITOR</div>
+      <div class="feature-desc">A dedicated section at the bottom of the Fleet Tracker displays all vessels that have disabled their AIS transponders. This is a major indicator of illicit activity — sanctions evasion, unreported cargo transfer, or military positioning. Each dark vessel shows name, last known coordinates, hours since transponder off, and threat classification.</div>
+      <div class="feature-tags">
+        <span class="tag tag-red">5 DARK VESSELS</span>
+        <span class="tag tag-red">HOURS-DARK COUNTER</span>
+        <span class="tag tag-amb">LAST KNOWN POSITION</span>
+        <span class="tag tag-cyn">CLICK-TO-FLY</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">⬡</div>
+    <div class="feature-body">
+      <div class="feature-title">CHOKEPOINT QUICK-FLY BUTTONS</div>
+      <div class="feature-desc">Three dedicated buttons in the filter bar fly the map instantly to the world's most critical maritime chokepoints — no searching required. The panel closes automatically and the map centers on the chokepoint at zoom level 7 for immediate situational awareness.</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;">
+        <div style="background:rgba(255,48,48,.06);border:1px solid rgba(255,48,48,.4);padding:8px 12px;font-family:Share Tech Mono,monospace;font-size:9px;">
+          <div style="color:var(--red);font-size:11px;letter-spacing:2px;margin-bottom:3px;">STRAIT OF HORMUZ</div>
+          <div style="color:var(--txt2);">26.5°N 56.2°E · 21M bbl/day · CRITICAL</div>
+        </div>
+        <div style="background:rgba(255,48,48,.06);border:1px solid rgba(255,48,48,.4);padding:8px 12px;font-family:Share Tech Mono,monospace;font-size:9px;">
+          <div style="color:var(--red);font-size:11px;letter-spacing:2px;margin-bottom:3px;">BAB-EL-MANDEB</div>
+          <div style="color:var(--txt2);">12.5°N 43.5°E · 3.8M bbl/day · CRITICAL</div>
+        </div>
+        <div style="background:rgba(255,100,0,.06);border:1px solid rgba(255,100,0,.4);padding:8px 12px;font-family:Share Tech Mono,monospace;font-size:9px;">
+          <div style="color:var(--high);font-size:11px;letter-spacing:2px;margin-bottom:3px;">SUEZ CANAL</div>
+          <div style="color:var(--txt2);">31.2°N 32.4°E · 12% global trade · HIGH</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 4: CONFLICT ZONES ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">04</span>
+    <span class="section-title">CONFLICT ZONES · 2026</span>
+    <span class="section-tag">43 ACTIVE · ACLED/CFR/CRISISWATCH</span>
+  </div>
+  <div class="card-grid card-grid-4" style="margin-bottom:24px;">
+    <div class="card red"><div class="card-big-num">8</div><div class="card-big-sub">CRITICAL ZONES</div><p style="margin-top:8px;">Ukraine, Gaza, Sudan, Myanmar, Lebanon, Yemen, DRC, Sahel</p></div>
+    <div class="card amb"><div class="card-big-num" style="color:var(--high)">12</div><div class="card-big-sub">HIGH SEVERITY</div><p style="margin-top:8px;">Somalia, Ethiopia, Nigeria, Haiti, Pakistan, Iran-Israel, S. China Sea + more</p></div>
+    <div class="card"><div class="card-big-num" style="color:var(--medium)">9</div><div class="card-big-sub">MEDIUM SEVERITY</div><p style="margin-top:8px;">Taiwan Strait, Mexico, Kosovo, Libya, Venezuela, West Bank + more</p></div>
+    <div class="card"><div class="card-big-num" style="color:var(--monitor)">14</div><div class="card-big-sub">MONITOR</div><p style="margin-top:8px;">Watchlist zones with elevated indicators below active threshold.</p></div>
+  </div>
+  <table class="conflict-table">
+    <thead><tr><th>CONFLICT ZONE</th><th>SEVERITY</th><th>TYPE</th><th>ACTORS</th><th>CASUALTIES</th><th>SOURCE</th></tr></thead>
+    <tbody>
+      <tr><td>Ukraine – Russia War</td><td><span class="sev sev-critical">CRITICAL</span></td><td>WAR</td><td>UKR vs RUS</td><td>120K+</td><td>ACLED</td></tr>
+      <tr><td>Gaza – Israel</td><td><span class="sev sev-critical">CRITICAL</span></td><td>ARMED CONFLICT</td><td>IDF vs HAMAS</td><td>55K+</td><td>ACLED</td></tr>
+      <tr><td>Sudan Civil War</td><td><span class="sev sev-critical">CRITICAL</span></td><td>CIVIL WAR</td><td>SAF vs RSF</td><td>150K+</td><td>CRISISWATCH</td></tr>
+      <tr><td>Myanmar Civil War</td><td><span class="sev sev-critical">CRITICAL</span></td><td>CIVIL WAR</td><td>Junta vs EAOs</td><td>50K+</td><td>ACLED</td></tr>
+      <tr><td>Yemen Conflict</td><td><span class="sev sev-critical">CRITICAL</span></td><td>ARMED CONFLICT</td><td>Houthis vs Coalition</td><td>380K+</td><td>CFR</td></tr>
+      <tr><td>DR Congo – East</td><td><span class="sev sev-critical">CRITICAL</span></td><td>CIVIL WAR</td><td>M23/RDF vs DRC</td><td>6M+</td><td>CRISISWATCH</td></tr>
+      <tr><td>Sahel – Mali/BF/Niger</td><td><span class="sev sev-critical">CRITICAL</span></td><td>INSURGENCY</td><td>JNIM vs Govts</td><td>25K+</td><td>ACLED</td></tr>
+      <tr><td>South Lebanon</td><td><span class="sev sev-critical">CRITICAL</span></td><td>ARMED CONFLICT</td><td>IDF vs Hezbollah</td><td>4K+</td><td>LIVEUAMAP</td></tr>
+      <tr><td>Somalia – Al-Shabaab</td><td><span class="sev sev-high">HIGH</span></td><td>INSURGENCY</td><td>AMISOM vs AS</td><td>12K+</td><td>ACLED</td></tr>
+      <tr><td>South China Sea</td><td><span class="sev sev-high">HIGH</span></td><td>TERRITORIAL</td><td>PRC vs ASEAN</td><td>—</td><td>CFR</td></tr>
+      <tr><td>Iran – Israel Standoff</td><td><span class="sev sev-high">HIGH</span></td><td>STANDOFF</td><td>Iran vs Israel</td><td>200+</td><td>OSINT</td></tr>
+      <tr><td>Taiwan Strait</td><td><span class="sev sev-medium">MEDIUM</span></td><td>STANDOFF</td><td>PRC vs ROC/US</td><td>—</td><td>CFR</td></tr>
+      <tr><td>Mexico Cartel Wars</td><td><span class="sev sev-medium">MEDIUM</span></td><td>CARTEL</td><td>Multiple Cartels</td><td>30K/yr</td><td>ACLED</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════ SECTION 5: ALL OSINT LAYERS ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">05</span>
+    <span class="section-title">ALL 9 OSINT LAYERS</span>
+    <span class="section-tag">COMPLETE LAYER REFERENCE</span>
+  </div>
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">✈</div>
+    <div class="feature-body">
+      <div class="feature-title" style="color:var(--grn);">LIVE ADS-B + FLIGHT TRACKER PANEL ★ NEW</div>
+      <div class="feature-desc">OpenSky Network. Global bbox. 15-second refresh. Aircraft on map + dedicated tracker panel with squawk detection, 8 filters, stats, click-to-fly.</div>
+      <div class="feature-tags"><span class="tag tag-new">★ UPGRADED</span><span class="tag tag-grn">FREE · NO KEY</span><span class="tag tag-red">SQUAWK 7700/7600/7500</span></div>
+    </div>
+  </div>
+  <div class="feature-row new-feature">
+    <div class="feature-icon-col">⚓</div>
+    <div class="feature-body">
+      <div class="feature-title" style="color:#4488ff;">LIVE FLEET TRACKER · 21 VESSELS ★ NEW</div>
+      <div class="feature-desc">21 naval and commercial vessels with full tracker panel. 7 carrier strike groups from 7 nations. 5 AIS dark vessels. Chokepoint quick-fly. OpenSeaMap tile overlay.</div>
+      <div class="feature-tags"><span class="tag tag-new">★ NEW</span><span class="tag tag-red">5 DARK VESSELS</span><span class="tag tag-cyn">OPENSEAMAP TILES</span></div>
+    </div>
+  </div>
+  <div class="feature-row">
+    <div class="feature-icon-col">🌍</div>
+    <div class="feature-body">
+      <div class="feature-title">CONFLICT ZONES · 43 ACTIVE</div>
+      <div class="feature-desc">ACLED/CrisisWatch/CFR data. Radius circles, severity-coded markers, clickable popups. Left panel list with fly-to on click. Search bar.</div>
+      <div class="feature-tags"><span class="tag tag-red">43 ZONES</span><span class="tag tag-cyn">CLICK-TO-FLY</span></div>
+    </div>
+  </div>
+  <div class="feature-row">
+    <div class="feature-icon-col">🛰</div>
+    <div class="feature-body">
+      <div class="feature-title">SATELLITE GROUND TRACKS · 16 ASSETS</div>
+      <div class="feature-desc">TLE-derived orbital paths from 9 nations. Real inclination, RAAN, period parameters. Continuously animated.</div>
+      <div class="feature-tags"><span class="tag tag-cyn">16 SATELLITES</span><span class="tag tag-amb">9 NATIONS</span></div>
+    </div>
+  </div>
+  <div class="feature-row">
+    <div class="feature-icon-col">📡</div>
+    <div class="feature-body">
+      <div class="feature-title">GPS/GNSS JAMMING ZONES · 7 ACTIVE</div>
+      <div class="feature-desc">Pulsing concentric rings. Tehran, Ukraine East, Yemen, Iran, Moscow, NW Syria, Sahel. L1/L2/L5 bands. Live breathing animation.</div>
+      <div class="feature-tags"><span class="tag tag-red">7 ZONES</span><span class="tag tag-amb">PULSING ANIMATION</span></div>
+    </div>
+  </div>
+  <div class="feature-row">
+    <div class="feature-icon-col">⬡</div>
+    <div class="feature-body">
+      <div class="feature-title">MARITIME CHOKEPOINTS · 7 PASSAGES</div>
+      <div class="feature-desc">Hormuz, Bab-el-Mandeb, Suez, Taiwan Strait, Malacca, Turkish Straits, Canary Passage. Threat status and daily volume.</div>
+      <div class="feature-tags"><span class="tag tag-red">HORMUZ — CRITICAL</span><span class="tag tag-red">BAB — CRITICAL</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 6: BASEMAPS ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">06</span>
+    <span class="section-title">BASEMAP ENGINE · 6 VIEWS</span>
+    <span class="section-tag">INSTANT SWITCHING</span>
+  </div>
+  <div class="bm-grid">
+    <div class="bm-card"><div class="bm-icon">🛰</div><div class="bm-name">SATELLITE</div><div class="bm-source">Google Maps · lyrs=s</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">Pure Google satellite. Same imagery as Google Maps. Highest detail.</p></div>
+    <div class="bm-card" style="border-color:rgba(0,229,255,.35);"><div class="bm-icon">🌍</div><div class="bm-name">ESRI ★ DEFAULT</div><div class="bm-source">ESRI · Maxar</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">High-res Maxar satellite. No key needed. Warm color tone.</p></div>
+    <div class="bm-card"><div class="bm-icon">🗺</div><div class="bm-name">HYBRID</div><div class="bm-source">Google Maps · lyrs=y</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">Satellite + roads and labels. Best for urban conflict analysis.</p></div>
+    <div class="bm-card"><div class="bm-icon">⛰</div><div class="bm-name">TOPO</div><div class="bm-source">Google Maps · lyrs=p</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">Terrain relief. Good for mountain conflict analysis.</p></div>
+    <div class="bm-card"><div class="bm-icon">◼</div><div class="bm-name">DARK MATTER</div><div class="bm-source">CartoDB · dark_all</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">Clean dark vector map. Maximum contrast for OSINT overlays.</p></div>
+    <div class="bm-card"><div class="bm-icon">🌿</div><div class="bm-name">TERRAIN</div><div class="bm-source">ESRI · World Terrain</div><p style="font-size:11px;color:var(--txt2);margin-top:6px;">Physical terrain emphasizing elevation and geography.</p></div>
+  </div>
+  <div class="alert-note" style="margin-top:20px;">⚠ Google Satellite, Hybrid, and Terrain use Google's public XYZ tile endpoint — no API key required. For production/heavy use a Google Maps API key is recommended.</div>
+</div>
+
+<!-- ══════ SECTION 7: DASHBOARD PANELS ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">07</span>
+    <span class="section-title">DASHBOARD PANELS</span>
+    <span class="section-tag">UI ARCHITECTURE · v2</span>
+  </div>
+  <div class="card-grid card-grid-2">
+    <div class="card grn new-feature">
+      <div class="card-title">LIVE FLIGHT TRACKER ★ NEW</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ Airborne count · High alt count<br>◈ Squawk alert counter + strip<br>◈ 8 region/type filter buttons<br>◈ Scrollable table: callsign, country, alt, spd, hdg, squawk status<br>◈ Top 100 aircraft displayed<br>◈ Click row → fly to aircraft on map
+      </div>
+    </div>
+    <div class="card blue new-feature">
+      <div class="card-title">LIVE FLEET TRACKER ★ NEW</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ Naval / Cargo / Tanker / Dark filters<br>◈ 5 vessel type filter buttons<br>◈ Chokepoint quick-fly: Hormuz, Bab, Suez<br>◈ Vessel table: name, type, flag, spd, hdg, status<br>◈ AIS Dark section: 5 vessels + hours dark<br>◈ Click row → fly to vessel on map
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">LEFT PANEL — INTELLIGENCE</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ Conflict counter (43 zones · 847K casualties)<br>◈ Critical, High, Medium zone lists<br>◈ GPS Jamming zones panel (7)<br>◈ SIGINT indicators (8 metrics)
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">RIGHT PANEL — FEEDS</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ Live ADS-B count + status + countdown<br>◈ Top 20 aircraft list<br>◈ AIS Maritime (10 vessels)<br>◈ Satellite pass schedule (8 passes)<br>◈ OSINT event stream (auto-inject 12s)
+      </div>
+    </div>
+    <div class="card amb">
+      <div class="card-title">BOTTOM BAR — ANALYTICS</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ 30-day ACLED event sparkline<br>◈ Chokepoint flow status bars (5)<br>◈ Dark vessel tracker panel<br>◈ Recent alert log (last 8)<br>◈ Basemap switcher (6 options)
+      </div>
+    </div>
+    <div class="card red">
+      <div class="card-title">TOPBAR — COMMAND</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--txt2);line-height:1.9;">
+        ◈ Global threat level meter (CRITICAL)<br>◈ Live conflict counters by severity<br>◈ 9 layer toggle buttons<br>◈ ✈ LIVE FLIGHTS · ⚓ LIVE FLEET buttons<br>◈ UTC live clock · LIVE OSINT badge
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 8: TECH STACK ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">08</span>
+    <span class="section-title">TECHNOLOGY STACK</span>
+    <span class="section-tag">OPEN SOURCE · BROWSER NATIVE</span>
+  </div>
+  <div class="stack-list">
+    <div class="stack-item"><div class="stack-dot" style="background:var(--cyn);"></div><div><div class="stack-name">LEAFLET.JS v1.9.4</div><div class="stack-role">Map engine · layers · markers · popups · interactive controls</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:var(--grn);"></div><div><div class="stack-name">OPENSKY NETWORK API</div><div class="stack-role">Free ADS-B · REST/JSON · no auth · global aircraft states · squawk field</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:#44aaff;"></div><div><div class="stack-name">OPENSEAMAP TILES ★</div><div class="stack-role">Community AIS vessel tile overlay · seamark layer · free · no key</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:#ff4488;"></div><div><div class="stack-name">GOOGLE MAPS TILES</div><div class="stack-role">Public XYZ satellite/hybrid/terrain · same as Google Maps · no key</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:var(--amb);"></div><div><div class="stack-name">ESRI WORLD IMAGERY</div><div class="stack-role">Default satellite basemap · Maxar/Earthstar · ArcGIS tile server</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:#aa88ff;"></div><div><div class="stack-name">CARTO DARK MATTER</div><div class="stack-role">Dark vector basemap · CartoDB · OSM data · night mode</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:var(--red);"></div><div><div class="stack-name">ALLORIGINS PROXY</div><div class="stack-role">CORS fallback for OpenSky API when direct fetch is blocked</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:#ffdd00;"></div><div><div class="stack-name">CELESTRAK TLE DATA</div><div class="stack-role">Two-line elements for satellite ground track computation</div></div></div>
+    <div class="stack-item"><div class="stack-dot" style="background:#44ddff;"></div><div><div class="stack-name">VANILLA HTML/CSS/JS</div><div class="stack-role">Zero frameworks · zero build tools · zero npm · single file</div></div></div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 9: OSINT SOURCES ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">09</span>
+    <span class="section-title">OSINT DATA SOURCES</span>
+    <span class="section-tag">ALL PUBLIC · ALL FREE</span>
+  </div>
+  <table class="conflict-table">
+    <thead><tr><th>SOURCE</th><th>PLATFORM</th><th>USED FOR</th><th>COST</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--cyn);">ACLED</td><td style="color:var(--txt2);">acleddata.com</td><td style="color:var(--txt2);">Conflict event counts, daily tallies, trend sparklines</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">CrisisWatch (ICG)</td><td style="color:var(--txt2);">crisisgroup.org</td><td style="color:var(--txt2);">Severity classification, escalation alerts, zone summaries</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">CFR Global Tracker</td><td style="color:var(--txt2);">cfr.org</td><td style="color:var(--txt2);">Zone background, actors, policy context</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">OpenSky Network</td><td style="color:var(--txt2);">opensky-network.org</td><td style="color:var(--txt2);">Live ADS-B · flight tracker · squawk codes · map markers</td><td style="color:var(--grn);">FREE API</td></tr>
+      <tr><td style="color:var(--cyn);">OpenSeaMap ★</td><td style="color:var(--txt2);">openseamap.org</td><td style="color:var(--txt2);">Live AIS vessel tiles · seamark overlay on map background</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">CelesTrak</td><td style="color:var(--txt2);">celestrak.org</td><td style="color:var(--txt2);">Satellite TLE orbital parameters for ground track animation</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">Liveuamap</td><td style="color:var(--txt2);">liveuamap.com</td><td style="color:var(--txt2);">Real-time field reports, OSINT event stream content</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">ESRI World Imagery</td><td style="color:var(--txt2);">arcgisonline.com</td><td style="color:var(--txt2);">Default satellite basemap tiles (Maxar/Earthstar)</td><td style="color:var(--grn);">FREE</td></tr>
+      <tr><td style="color:var(--cyn);">Google Maps Tiles</td><td style="color:var(--txt2);">mt.google.com</td><td style="color:var(--txt2);">Satellite, hybrid, terrain basemap options</td><td style="color:var(--grn);">FREE (public XYZ)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ══════ SECTION 10: DEPLOYMENT ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">10</span>
+    <span class="section-title">DEPLOYMENT</span>
+    <span class="section-tag">GITHUB PAGES · samyvishnu</span>
+  </div>
+  <div class="info-note">
+    ◈ FILE: index.html (renamed for clean URL — no filename needed at the end)<br>
+    ◈ REPO: github.com/Samyvishnu/warwatch<br>
+    ◈ LIVE DASHBOARD: https://samyvishnu.github.io/warwatch/<br>
+    ◈ SUMMARY REPORT: https://samyvishnu.github.io/warwatch/warwatch-summary-report-v2.html
+  </div>
+  <div class="roadmap">
+    <div class="rm-item"><div class="rm-title">GITHUB PAGES · FREE HOSTING</div><div class="rm-desc">Repository: Samyvishnu/warwatch · Public · Deploy from main branch / root. Green checkmark in Actions tab confirms deployment. Pages updates within 60 seconds of every commit.</div></div>
+    <div class="rm-item"><div class="rm-title">UPLOAD PROCESS</div><div class="rm-desc">Delete old Warwatch-global-conflict-monitor-v2.html from repo. Upload new index.html and warwatch-summary-report-v2.html. Commit with message "v2: Add live flight and fleet tracker". Wait 2 minutes.</div></div>
+    <div class="rm-item"><div class="rm-title">CORS + API NOTES</div><div class="rm-desc">GitHub Pages serves over HTTPS which can block OpenSky's HTTP API on first attempt. The allorigins.win CORS proxy fallback handles this automatically — data loads on retry within 15 seconds.</div></div>
+    <div class="rm-item"><div class="rm-title">LINKEDIN SHARING STRATEGY</div><div class="rm-desc">Post a screen recording as the main post (video gets 5× more reach). In the first comment paste the live dashboard URL. Second comment paste the summary report URL. Tag: #OSINT #Geospatial #OpenSource #Intelligence</div></div>
+  </div>
+</div>
+
+<!-- ══════ SECTION 11: ROADMAP ══════ -->
+<div class="section-block">
+  <div class="section-header">
+    <span class="section-num">11</span>
+    <span class="section-title">FUTURE ROADMAP · V5</span>
+    <span class="section-tag">NEXT ENHANCEMENTS</span>
+  </div>
+  <div class="card-grid card-grid-2">
+    <div class="card"><div class="card-title">LIVE ACLED API INTEGRATION</div><p>Replace static conflict data with live ACLED API calls returning real-time GeoJSON events as they occur. Free researcher API key required.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-amb">ACLED API KEY</span><span class="tag tag-cyn">FREE RESEARCHER TIER</span></div></div>
+    <div class="card"><div class="card-title">LIVE MARINETRAFFIC AIS</div><p>Replace curated vessel data with live MarineTraffic or VesselFinder API. True real-time AIS for all transmitting vessels globally.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-amb">PAID API</span><span class="tag tag-cyn">1–2 MIN REFRESH</span></div></div>
+    <div class="card"><div class="card-title">MILITARY AIRCRAFT FILTER</div><p>ADSBExchange "military-only" filter integration for isolating military aircraft callsigns and hex codes from commercial traffic.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-red">ADSBEXCHANGE API</span><span class="tag tag-cyn">MIL HEX RANGES</span></div></div>
+    <div class="card"><div class="card-title">4D TIMELINE REPLAY</div><p>Historical timeline slider to replay conflict events, flight patterns, and naval movements over time — days or weeks of data.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-cyn">TIMELINE SCRUB</span><span class="tag tag-cyn">4D REPLAY</span></div></div>
+    <div class="card"><div class="card-title">SATELLITE IMAGERY TILES</div><p>Planet Labs or Maxar on-demand SAR/optical tiles over specific conflict zones directly overlaid on the map at high zoom.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-amb">PLANET LABS API</span><span class="tag tag-cyn">SAR OVERLAY</span></div></div>
+    <div class="card"><div class="card-title">AI ANALYSIS AGENT</div><p>Claude AI-powered agent synthesizing ADS-B anomalies, AIS blackouts, GPS jamming spikes into natural language intelligence summaries on demand.</p><div class="feature-tags" style="margin-top:10px;"><span class="tag tag-cyn">CLAUDE API</span><span class="tag tag-grn">AUTO SITREPS</span></div></div>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<div id="footer">
+  <div class="footer-logo">WARWATCH</div>
+  <div class="footer-meta">
+    GLOBAL CONFLICT MONITOR · v4.0 · BUILD 2026 · REVISED SUMMARY REPORT v2<br>
+    BUILT BY SAMYVISHNU · COLLABORATIVELY WITH CLAUDE AI<br>
+    ALL DATA SOURCED FROM PUBLICLY AVAILABLE OSINT FEEDS · EDUCATIONAL & RESEARCH USE ONLY<br>
+    ACLED · CRISISWATCH · CFR · OPENSKY · OPENSEAMAP · ESRI · GOOGLE MAPS · CELESTRAK
+  </div>
+</div>
+
+</body>
+</html>
