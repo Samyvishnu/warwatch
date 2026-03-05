@@ -11,9 +11,12 @@ WARWATCH Global Conflict Monitor - OSINT Dashboard
 
 ## 🚀 Live Links
 
+### Reading Session
+* **Live Project:** [Open WARWATCH](https://samyvishnu.github.io/warwatch/)
+* **Project Report:** [View Full Report](https://samyvishnu.github.io/warwatch/report.html)
 | | Link |
 |---|---|
-| 🌍 **Live Dashboard** | [Open WARWATCH](https://samyvishnu.github.io/warwatch.html) |
+| 🌍 **Live Dashboard** | [Open WARWATCH](https://samyvishnu.github.io/warwatch/) |
 | 📋 **Summary Report** | [Read Full Report](https://samyvishnu.github.io/warwatch-summary-report-v2.html) |
 
 ---
