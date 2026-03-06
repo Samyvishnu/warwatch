@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WARWATCH · GLOBAL CONFLICT MONITOR</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════ ROOT VARS ═══════════════ */
+:root{
+  --bg:#03080f;
+  --panel:rgba(2,6,14,0.93);
+  --border:rgba(0,100,160,0.3);
+  --border2:rgba(255,60,60,0.25);
+  --cyn:#00e5ff;
+  --grn:#39ff6a;
+  --amb:#ffaa00;
+  --red:#ff3030;
+  --mag:#ff2090;
+  --dim:#0d2030;
+  --txt:#8ab8cc;
+  --txt2:#2a5a70;
+  --critical:#ff0000;
+  --high:#ff6600;
+  --medium:#ffcc00;
+  --low:#44ff88;
+  --monitor:#00aaff;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100vw;height:100vh;overflow:hidden;background:var(--bg);}
+body{font-family:'Rajdhani',sans-serif;color:var(--txt);}
+
+/* ═══════════════ MAP ═══════════════ */
+#map{position:absolute;inset:0;z-index:0;}
+.leaflet-tile-pane{filter:brightness(.55) saturate(1.3) hue-rotate(5deg);}
+
+/* ═══════════════ LIVE TRACKER PANELS ═══════════════ */
+#tracker-tabs{
+  position:absolute;top:60px;left:50%;transform:translateX(-50%);
+  z-index:1400;display:flex;gap:0;
+  background:rgba(2,4,14,.96);border:1px solid var(--border);
+  backdrop-filter:blur(12px);
+}
+.tab-btn{
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:5px 16px;
+  background:none;border:none;border-right:1px solid var(--border);
+  color:#2a5a70;cursor:pointer;letter-spacing:2px;transition:all .2s;
+}
+.tab-btn:last-child{border-right:none;}
+.tab-btn.active{color:var(--cyn);background:rgba(0,229,255,.07);}
+.tab-btn.active-grn{color:var(--grn);background:rgba(57,255,106,.06);}
+.tab-btn.active-amb{color:var(--amb);background:rgba(255,170,0,.06);}
+.tab-btn:hover{background:rgba(0,229,255,.04);}
+
+#flight-tracker-panel,#fleet-tracker-panel{
+  position:absolute;top:96px;left:50%;transform:translateX(-50%);
+  z-index:1300;width:540px;max-height:calc(100vh - 230px);
+  background:rgba(2,5,14,.97);border:1px solid var(--border);
+  backdrop-filter:blur(18px);display:none;overflow:hidden;
+  flex-direction:column;
+}
+#flight-tracker-panel.show,#fleet-tracker-panel.show{display:flex;}
+
+.tracker-header{
+  padding:8px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;flex-shrink:0;
+  background:rgba(0,229,255,.03);
+}
+.tracker-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:4px;}
+.tracker-count{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;}
+.tracker-status{font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:1px;}
+.tracker-close{
+  margin-left:auto;background:none;border:1px solid rgba(255,48,48,.4);
+  color:var(--red);font-family:'Share Tech Mono',monospace;font-size:8px;
+  padding:2px 8px;cursor:pointer;letter-spacing:1px;
+}
+.tracker-close:hover{background:rgba(255,48,48,.1);}
+
+.filter-bar{
+  padding:6px 10px;border-bottom:1px solid rgba(0,40,60,.5);
+  display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0;
+  background:rgba(0,0,0,.2);
+}
+.fbtn{
+  font-family:'Share Tech Mono',monospace;font-size:8px;padding:2px 8px;
+  background:none;border:1px solid #001830;color:#2a5a70;cursor:pointer;
+  letter-spacing:1px;transition:all .15s;
+}
+.fbtn.on{border-color:var(--cyn);color:var(--cyn);background:rgba(0,229,255,.05);}
+.fbtn.on-grn{border-color:var(--grn);color:var(--grn);background:rgba(57,255,106,.05);}
+.fbtn.on-red{border-color:var(--red);color:var(--red);background:rgba(255,48,48,.05);}
+.fbtn.on-amb{border-color:var(--amb);color:var(--amb);background:rgba(255,170,0,.05);}
+
+.tracker-list{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:#002040 transparent;}
+.tracker-list::-webkit-scrollbar{width:2px;}
+
+.fl-row{
+  display:grid;grid-template-columns:88px 55px 55px 52px 52px 1fr;
+  padding:5px 10px;border-bottom:1px solid rgba(0,16,30,.8);
+  font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;
+  transition:background .1s;align-items:center;
+}
+.fl-row:hover{background:rgba(0,229,255,.04);}
+.fl-row.sq7700{background:rgba(255,48,48,.09);border-left:2px solid var(--red);}
+.fl-row.sq7600{background:rgba(255,170,0,.07);border-left:2px solid var(--amb);}
+.fl-row.sq7500{background:rgba(255,0,255,.07);border-left:2px solid #ff00ff;}
+.fl-cs{color:var(--grn);font-size:10px;}
+.fl-hdr{
+  display:grid;grid-template-columns:88px 55px 55px 52px 52px 1fr;
+  padding:4px 10px;background:rgba(0,229,255,.04);
+  font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--txt2);
+  letter-spacing:1px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+
+.vs-row{
+  display:grid;grid-template-columns:1fr 72px 52px 44px 62px;
+  padding:5px 10px;border-bottom:1px solid rgba(0,16,30,.8);
+  font-family:'Share Tech Mono',monospace;font-size:9px;cursor:pointer;
+  transition:background .1s;align-items:center;
+}
+.vs-row:hover{background:rgba(0,100,180,.05);}
+.vs-row.dark-v{background:rgba(255,48,48,.07);border-left:2px solid var(--red);}
+.vs-name{color:#4488ff;font-size:9px;}
+.vs-hdr{
+  display:grid;grid-template-columns:1fr 72px 52px 44px 62px;
+  padding:4px 10px;background:rgba(0,80,160,.05);
+  font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--txt2);
+  letter-spacing:1px;border-bottom:1px solid var(--border);flex-shrink:0;
+}
+
+#squawk-strip{
+  padding:5px 10px;background:rgba(255,0,0,.06);
+  border-bottom:1px solid rgba(255,48,48,.3);
+  font-family:'Share Tech Mono',monospace;font-size:8px;
+  color:var(--red);letter-spacing:1px;display:none;flex-shrink:0;
+}
+#squawk-strip.show{display:block;}
+
+.stats-row{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;}
+.stat-cell{flex:1;padding:5px 10px;text-align:center;border-right:1px solid rgba(0,40,60,.5);}
+.stat-cell:last-child{border-right:none;}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;}
+.stat-lbl{font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--txt2);letter-spacing:1px;}
+
+.vs-row.commercial-vessel{background:rgba(255,170,0,.03);border-left:2px solid rgba(255,170,0,.4);}
+.vs-row.commercial-vessel:hover{background:rgba(255,170,0,.07);}
+
+.ais-notice{
+  padding:6px 10px;font-family:'Share Tech Mono',monospace;font-size:8px;
+  color:var(--amb);border-bottom:1px solid rgba(255,170,0,.2);
+  background:rgba(255,170,0,.04);flex-shrink:0;letter-spacing:.5px;
+}
+.leaflet-control-zoom{display:none;}
+.leaflet-attribution-flag{display:none!important;}
+.leaflet-control-attribution{background:rgba(0,0,0,.4)!important;color:#1a3a50!important;font-size:6px!important;}
+
+/* Custom popup */
+.leaflet-popup-content-wrapper{
+  background:rgba(2,6,18,.97);border:1px solid var(--border);
+  border-radius:0;color:var(--txt);
+  font-family:'Share Tech Mono',monospace;font-size:9px;padding:0;
+  box-shadow:0 0 20px rgba(0,0,0,.8);min-width:220px;
+}
+.leaflet-popup-content{margin:12px 14px;line-height:1.9;}
+.leaflet-popup-tip-container{display:none;}
+.popup-title{color:var(--cyn);font-size:11px;letter-spacing:2px;font-family:'Bebas Neue',sans-serif;
+  border-bottom:1px solid var(--border);padding-bottom:5px;margin-bottom:6px;}
+.popup-row{display:flex;justify-content:space-between;gap:16px;}
+.popup-val{color:var(--amb);}
+.popup-sev-critical{color:var(--critical);}
+.popup-sev-high{color:var(--high);}
+.popup-sev-medium{color:var(--medium);}
+.popup-sev-low{color:var(--low);}
+
+/* ═══════════════ TOPBAR ═══════════════ */
+#topbar{
+  position:absolute;top:0;left:0;right:0;height:52px;z-index:2000;
+  background:rgba(2,4,12,.97);border-bottom:1px solid var(--border2);
+  display:flex;align-items:center;padding:0 14px;gap:14px;
+  backdrop-filter:blur(20px);
+}
+.logo-wrap{display:flex;flex-direction:column;gap:0;}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--red);
+  letter-spacing:6px;text-shadow:0 0 20px rgba(255,48,48,.6);line-height:1;}
+.logo-sub{font-size:7px;color:#2a3a50;letter-spacing:4px;font-family:'Share Tech Mono',monospace;}
+
+/* threat meter */
+#threat-bar{
+  display:flex;align-items:center;gap:8px;padding:0 14px;
+  border-left:1px solid var(--border);border-right:1px solid var(--border);
+}
+.threat-label{font-size:8px;color:#2a4a60;letter-spacing:2px;font-family:'Share Tech Mono',monospace;}
+.threat-level{
+  font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;
+  color:var(--red);text-shadow:0 0 12px rgba(255,48,48,.7);
+}
+.threat-boxes{display:flex;gap:2px;}
+.t-box{width:12px;height:20px;border:1px solid rgba(255,48,48,.3);}
+.t-box.fill-red{background:var(--red);box-shadow:0 0 4px var(--red);}
+.t-box.fill-amb{background:var(--amb);box-shadow:0 0 4px var(--amb);}
+.t-box.fill-grn{background:var(--grn);box-shadow:0 0 4px var(--grn);}
+
+/* conflict counters */
+.conf-counters{display:flex;gap:10px;align-items:center;}
+.c-stat{text-align:center;padding:0 8px;border-right:1px solid var(--border);}
+.c-stat:last-child{border-right:none;}
+.c-val{font-family:'Bebas Neue',sans-serif;font-size:22px;line-height:1;}
+.c-lbl{font-size:7px;color:var(--txt2);letter-spacing:2px;font-family:'Share Tech Mono',monospace;}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+@keyframes alertpulse{0%,100%{box-shadow:0 0 4px rgba(255,48,48,.4)}50%{box-shadow:0 0 16px rgba(255,48,48,.9)}}
+.pulse-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.pd-red{background:var(--red);animation:blink .9s infinite;}
+.pd-amb{background:var(--amb);animation:blink 1.6s infinite;}
+.pd-grn{background:var(--grn);animation:blink 2.5s infinite;}
+.pd-cyn{background:var(--cyn);animation:blink 3s infinite;}
+.pd-mag{background:var(--mag);animation:blink 1.2s infinite;}
+
+/* layer buttons */
+#layer-row{display:flex;gap:3px;flex-wrap:wrap;}
+.lbtn{
+  font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 9px;
+  background:none;border:1px solid #002040;color:#2a5a70;cursor:pointer;
+  letter-spacing:1px;transition:all .2s;white-space:nowrap;
+}
+.lbtn.on{color:var(--cyn);border-color:var(--cyn);background:rgba(0,229,255,.06);box-shadow:0 0 6px rgba(0,229,255,.15);}
+.lbtn.on-red{color:var(--red);border-color:var(--red);background:rgba(255,48,48,.06);}
+.lbtn.on-amb{color:var(--amb);border-color:var(--amb);background:rgba(255,170,0,.05);}
+.lbtn.on-grn{color:var(--grn);border-color:var(--grn);background:rgba(57,255,106,.05);}
+.lbtn:hover{border-color:rgba(0,229,255,.4);}
+
+.spacer{flex:1;}
+#utc-clock{font-family:'Share Tech Mono',monospace;font-size:15px;color:var(--amb);letter-spacing:2px;white-space:nowrap;}
+.live-badge{
+  display:flex;align-items:center;gap:5px;
+  border:1px solid rgba(255,48,48,.5);padding:3px 10px;
+  font-size:8px;color:var(--red);letter-spacing:2px;
+  background:rgba(255,48,48,.06);font-family:'Share Tech Mono',monospace;
+  white-space:nowrap;
+}
+
+/* ═══════════════ PANELS ═══════════════ */
+.panel{
+  position:absolute;z-index:1000;
+  background:var(--panel);border:1px solid var(--border);
+  backdrop-filter:blur(18px);
+  overflow-y:auto;scrollbar-width:thin;scrollbar-color:#002040 transparent;
+}
+#left-panel{top:60px;left:8px;width:270px;bottom:118px;}
+#right-panel{top:60px;right:8px;width:270px;bottom:118px;}
+
+::-webkit-scrollbar{width:2px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#002040;}
+
+/* panel sections */
+.psec{padding:9px 11px;border-bottom:1px solid rgba(0,60,100,.3);}
+.ptitle{
+  font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:3px;
+  color:var(--cyn);margin-bottom:7px;display:flex;align-items:center;
+  justify-content:space-between;
+}
+.ptitle-sm{
+  font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:3px;
+  color:var(--cyn);margin-bottom:6px;text-transform:uppercase;
+}
+.ptitle-sm::before{content:'◈ ';}
+
+/* big stats */
+.bignum{font-family:'Bebas Neue',sans-serif;font-size:28px;line-height:1;letter-spacing:2px;}
+.bignum.red{color:var(--red);text-shadow:0 0 10px rgba(255,48,48,.4);}
+.bignum.amb{color:var(--amb);}
+.bignum.grn{color:var(--grn);}
+.bignum.cyn{color:var(--cyn);}
+.bigsub{font-size:8px;color:var(--txt2);letter-spacing:2px;font-family:'Share Tech Mono',monospace;margin-top:1px;}
+
+/* conflict items */
+.conf-item{
+  padding:6px 0;border-bottom:1px solid rgba(0,20,40,.8);cursor:pointer;
+  transition:background .15s;
+}
+.conf-item:hover{background:rgba(0,229,255,.03);}
+.conf-name{font-size:12px;font-weight:600;color:#b0d8e8;letter-spacing:.5px;}
+.conf-meta{font-size:9px;color:var(--txt2);font-family:'Share Tech Mono',monospace;margin-top:1px;}
+.conf-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.sev-badge{
+  font-size:7px;padding:1px 6px;letter-spacing:1px;
+  font-family:'Share Tech Mono',monospace;white-space:nowrap;flex-shrink:0;
+}
+.sev-critical{color:var(--critical);border:1px solid var(--critical);background:rgba(255,0,0,.07);}
+.sev-high    {color:var(--high);    border:1px solid var(--high);    background:rgba(255,100,0,.06);}
+.sev-medium  {color:var(--medium);  border:1px solid var(--medium);  background:rgba(255,200,0,.05);}
+.sev-low     {color:var(--low);     border:1px solid var(--low);     background:rgba(68,255,136,.04);}
+.sev-monitor {color:var(--monitor); border:1px solid var(--monitor); background:rgba(0,170,255,.04);}
+.deaths-num{font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--red);}
+
+/* event feed */
+.feed-wrap{height:140px;overflow-y:auto;scrollbar-width:none;}
+.feed-wrap::-webkit-scrollbar{display:none;}
+.ev-item{padding:3px 0;border-bottom:1px solid rgba(0,16,30,.8);font-family:'Share Tech Mono',monospace;font-size:8px;display:flex;gap:5px;align-items:flex-start;}
+.ev-time{color:#1a4060;flex-shrink:0;width:48px;}
+.ev-type{flex-shrink:0;width:8px;height:8px;border-radius:50%;margin-top:1px;}
+.ev-txt-explosion{color:#ff8844;}
+.ev-txt-military {color:#ff4444;}
+.ev-txt-protest  {color:#ffcc44;}
+.ev-txt-cyber    {color:#44ddff;}
+.ev-txt-naval    {color:#4488ff;}
+.ev-txt-airstrike{color:#ff2244;}
+.ev-txt-diplomacy{color:#44ff88;}
+.ev-txt-info     {color:#2a7a9a;}
+
+/* flight items */
+.flt-item{padding:3px 0;border-bottom:1px solid rgba(0,16,30,.7);font-family:'Share Tech Mono',monospace;font-size:8px;}
+.flt-cs{color:var(--grn);font-size:9px;}
+.flt-meta{color:var(--txt2);font-size:7px;margin-top:1px;}
+
+/* vessel items */
+.ship-item{padding:4px 0;border-bottom:1px solid rgba(0,16,30,.7);}
+.ship-name{font-size:10px;font-weight:600;letter-spacing:.3px;}
+.ship-meta{font-size:8px;color:var(--txt2);font-family:'Share Tech Mono',monospace;margin-top:1px;}
+
+/* alert boxes */
+@keyframes alertglow{0%,100%{box-shadow:0 0 3px rgba(255,0,0,.3)}50%{box-shadow:0 0 12px rgba(255,0,0,.8)}}
+.alert-box{
+  border:1px solid rgba(255,48,48,.7);background:rgba(255,30,30,.06);
+  padding:5px 8px;margin:4px 0;font-size:8px;letter-spacing:1px;
+  animation:alertglow 1.8s infinite;font-family:'Share Tech Mono',monospace;
+}
+.warn-box{
+  border:1px solid rgba(255,170,0,.5);background:rgba(255,170,0,.05);
+  padding:5px 8px;margin:4px 0;font-size:8px;letter-spacing:1px;
+  font-family:'Share Tech Mono',monospace;
+}
+
+/* ═══════════════ BOTTOM BAR ═══════════════ */
+#bottombar{
+  position:absolute;bottom:0;left:0;right:0;height:108px;z-index:2000;
+  background:rgba(2,4,12,.97);border-top:1px solid var(--border2);
+  padding:9px 16px;backdrop-filter:blur(20px);
+  display:flex;gap:0;
+}
+.bb-section{flex:1;padding:0 14px;border-right:1px solid var(--border);}
+.bb-section:first-child{padding-left:0;}
+.bb-section:last-child{border-right:none;}
+.bb-title{font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:3px;
+  color:var(--cyn);margin-bottom:5px;}
+
+/* mini sparkline bars */
+.sparkbar{display:flex;align-items:flex-end;gap:2px;height:35px;}
+.spark{flex:1;background:var(--red);opacity:.6;border-radius:1px 1px 0 0;transition:height .3s;}
+.spark:last-child{opacity:1;}
+
+/* bottleneck strip */
+.bneck{
+  display:flex;flex-direction:column;gap:3px;
+}
+.bn-row{display:flex;justify-content:space-between;align-items:center;font-family:'Share Tech Mono',monospace;font-size:8px;}
+.bn-name{color:#2a6a80;letter-spacing:1px;}
+.bn-val{color:var(--amb);}
+.bn-bar-wrap{flex:1;height:3px;background:#001020;margin:0 6px;border-radius:1px;}
+.bn-bar{height:100%;border-radius:1px;background:var(--amb);}
+.bn-status{font-size:7px;padding:0 4px;letter-spacing:1px;}
+
+/* ═══════════════ MAP HUDS ═══════════════ */
+.hud{position:absolute;z-index:900;pointer-events:none;
+  font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--txt2);line-height:1.9;letter-spacing:.5px;}
+.hud-bl{bottom:120px;left:285px;}
+.hud-br{bottom:120px;right:285px;text-align:right;}
+.hud-h{color:rgba(0,229,255,.45);}
+.hud-alert{
+  position:absolute;top:62px;left:50%;transform:translateX(-50%);
+  z-index:1500;background:rgba(2,4,12,.95);
+  border:1px solid rgba(255,48,48,.6);padding:5px 24px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--red);letter-spacing:3px;backdrop-filter:blur(8px);
+  white-space:nowrap;text-shadow:0 0 8px rgba(255,48,48,.6);
+  animation:alertglow 2s infinite;
+}
+
+/* alert notification toast */
+#alert-toast{
+  position:absolute;top:72px;right:285px;z-index:1800;
+  background:rgba(2,0,6,.97);border:1px solid var(--red);
+  padding:8px 14px;font-family:'Share Tech Mono',monospace;
+  font-size:9px;color:var(--red);letter-spacing:1px;
+  max-width:240px;display:none;
+  animation:alertglow 1.5s infinite;
+}
+#alert-toast.show{display:block;}
+.toast-close{float:right;cursor:pointer;color:#ff6666;margin-left:8px;pointer-events:all;}
+
+/* ═══════════════ SEARCH BOX ═══════════════ */
+#searchbar{
+  position:absolute;top:62px;left:285px;z-index:1200;
+  background:rgba(2,6,14,.95);border:1px solid var(--border);
+  display:flex;align-items:center;gap:6px;padding:4px 10px;
+  backdrop-filter:blur(10px);
+}
+#searchbar input{
+  background:none;border:none;outline:none;color:var(--cyn);
+  font-family:'Share Tech Mono',monospace;font-size:9px;width:180px;
+  letter-spacing:1px;
+}
+#searchbar input::placeholder{color:#1a4060;}
+.search-icon{color:var(--txt2);font-size:10px;}
+
+/* ═══════════════ LEGEND ═══════════════ */
+#legend{
+  position:absolute;bottom:120px;right:285px;z-index:1000;
+  background:rgba(2,6,14,.92);border:1px solid var(--border);
+  padding:8px 12px;font-family:'Share Tech Mono',monospace;font-size:8px;
+}
+.leg-row{display:flex;align-items:center;gap:6px;padding:2px 0;color:var(--txt2);}
+.leg-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.leg-sq{width:10px;height:6px;flex-shrink:0;opacity:.6;}
+
+/* ── BASEMAP SWITCHER ── */
+#basemap-switcher{
+  position:absolute;bottom:118px;left:50%;transform:translateX(-50%);
+  z-index:1200;display:flex;gap:3px;
+  background:rgba(2,4,14,.92);border:1px solid var(--border);
+  padding:5px 8px;backdrop-filter:blur(12px);
+}
+.bmbtn{
+  font-family:'Share Tech Mono',monospace;font-size:8px;padding:3px 10px;
+  background:none;border:1px solid #002040;color:#2a5a70;cursor:pointer;
+  letter-spacing:1px;transition:all .2s;white-space:nowrap;
+}
+.bmbtn.active{background:#001830;color:var(--cyn);border-color:var(--cyn);box-shadow:0 0 8px rgba(0,229,255,.2);}
+.bmbtn:hover{border-color:rgba(0,229,255,.35);}
+/* basemap label in corner */
+#basemap-label{
+  position:absolute;bottom:120px;right:285px;z-index:800;
+  font-family:'Share Tech Mono',monospace;font-size:7px;
+  color:rgba(0,229,255,.35);letter-spacing:2px;pointer-events:none;
+  text-align:right;
+}
+
+/* conflict zone marker */
+.cz-marker{
+  border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:9px;font-weight:700;
+  cursor:pointer;transition:transform .2s;
+  box-shadow:0 0 10px currentColor;
+}
+.cz-marker:hover{transform:scale(1.2);}
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- ══════════ TOPBAR ══════════ -->
+<div id="topbar">
+  <div class="logo-wrap">
+    <div class="logo">WARWATCH</div>
+    <div class="logo-sub">GLOBAL CONFLICT MONITOR · OSINT PLATFORM · 2026</div>
+  </div>
+
+  <div id="threat-bar">
+    <div>
+      <div class="threat-label">GLOBAL THREAT</div>
+      <div class="threat-level">CRITICAL</div>
+    </div>
+    <div class="threat-boxes" id="threat-boxes"></div>
+  </div>
+
+  <div class="conf-counters">
+    <div class="c-stat">
+      <div class="c-val" style="color:var(--red)" id="cnt-critical">8</div>
+      <div class="c-lbl">CRITICAL</div>
+    </div>
+    <div class="c-stat">
+      <div class="c-val" style="color:var(--high)" id="cnt-high">12</div>
+      <div class="c-lbl">HIGH</div>
+    </div>
+    <div class="c-stat">
+      <div class="c-val" style="color:var(--medium)" id="cnt-medium">9</div>
+      <div class="c-lbl">MEDIUM</div>
+    </div>
+    <div class="c-stat">
+      <div class="c-val" style="color:var(--monitor)">14</div>
+      <div class="c-lbl">MONITOR</div>
+    </div>
+  </div>
+
+  <div id="layer-row">
+    <button class="lbtn on-red" id="lb-conflicts" onclick="toggleLayer('conflicts')">⬤ CONFLICTS</button>
+    <button class="lbtn on-grn" id="lb-adsb"      onclick="toggleLayer('adsb')">✈ LIVE ADS-B</button>
+    <button class="lbtn on"     id="lb-maritime"   onclick="toggleLayer('maritime')">⚓ AIS</button>
+    <button class="lbtn on"     id="lb-satellites" onclick="toggleLayer('satellites')">🛰 SAT TRACKS</button>
+    <button class="lbtn on-amb" id="lb-jamming"    onclick="toggleLayer('jamming')">◉ GPS JAM</button>
+    <button class="lbtn on"     id="lb-bottleneck" onclick="toggleLayer('bottleneck')">⬡ CHOKEPOINTS</button>
+    <button class="lbtn"        id="lb-infra"      onclick="toggleLayer('infra')">⚡ INFRA</button>
+    <button class="lbtn on-grn" id="lb-liveflights" onclick="openTracker('flight')" style="border-color:var(--grn);color:var(--grn);">✈ LIVE FLIGHTS</button>
+    <button class="lbtn on"     id="lb-livefleet"   onclick="openTracker('fleet')"  style="border-color:#4488ff;color:#4488ff;">⚓ LIVE FLEET</button>
+  </div>
+
+  <div class="spacer"></div>
+  <div id="utc-clock">--:--:-- UTC</div>
+  <div class="live-badge"><span class="pulse-dot pd-red"></span>&nbsp;LIVE OSINT</div>
+</div>
+
+<!-- ══════════ SEARCH ══════════ -->
+<div id="searchbar">
+  <span class="search-icon">⌕</span>
+  <input id="search-input" placeholder="SEARCH CONFLICT ZONE / REGION…" onkeyup="searchConflict(event)">
+</div>
+
+<!-- ══════════ ALERT HUD ══════════ -->
+<div class="hud-alert" id="phase-banner">⚠ MULTIPLE CRITICAL EVENTS DETECTED · 8 ACTIVE CONFLICT ZONES</div>
+
+<!-- ══════════ ALERT TOAST ══════════ -->
+<div id="alert-toast"><span class="toast-close" onclick="this.parentElement.classList.remove('show')">✕</span><span id="toast-msg"></span></div>
+
+<!-- ══════════ TRACKER TABS ══════════ -->
+<div id="tracker-tabs" style="display:none;">
+  <button class="tab-btn active-grn" id="tab-flights" onclick="switchTab('flight')">✈ LIVE FLIGHT TRACKER</button>
+  <button class="tab-btn active-amb" id="tab-fleet"   onclick="switchTab('fleet')">⚓ LIVE FLEET TRACKER</button>
+  <button class="tab-btn" onclick="closeTrackers()">✕ CLOSE</button>
+</div>
+
+<!-- ══════════ LIVE FLIGHT TRACKER PANEL ══════════ -->
+<div id="flight-tracker-panel">
+  <div class="tracker-header">
+    <div>
+      <div class="tracker-title" style="color:var(--grn);">✈ LIVE FLIGHT TRACKER</div>
+      <div class="tracker-status">OPENSKY NETWORK · GLOBAL ADS-B · AUTO-REFRESH 15s</div>
+    </div>
+    <div style="margin-left:12px;">
+      <div class="tracker-count" style="color:var(--grn)" id="ft-count">—</div>
+      <div class="tracker-status" id="ft-status">CONNECTING…</div>
+    </div>
+    <div style="margin-left:auto;font-family:Share Tech Mono,monospace;font-size:8px;color:var(--txt2);">
+      <div id="ft-refresh-txt"></div>
+      <div id="ft-next">NEXT: —</div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-num" style="color:var(--grn)" id="ft-airborne">—</div><div class="stat-lbl">AIRBORNE</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--amb)" id="ft-high-alt">—</div><div class="stat-lbl">HIGH ALT (&gt;10km)</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--red)" id="ft-squawk">0</div><div class="stat-lbl">SQUAWK ALERTS</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--cyn)" id="ft-nations">—</div><div class="stat-lbl">NATIONS</div></div>
+  </div>
+
+  <!-- Squawk alert strip -->
+  <div id="squawk-strip">⚠ EMERGENCY SQUAWK DETECTED · SEE HIGHLIGHTED ROWS BELOW</div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <span style="font-family:Share Tech Mono,monospace;font-size:8px;color:var(--txt2);letter-spacing:1px;padding:2px 4px;">FILTER:</span>
+    <button class="fbtn on-grn" id="ff-all"      onclick="setFlightFilter('all')">ALL</button>
+    <button class="fbtn"        id="ff-high"     onclick="setFlightFilter('high')">HIGH ALT</button>
+    <button class="fbtn"        id="ff-low"      onclick="setFlightFilter('low')">LOW ALT</button>
+    <button class="fbtn on-red" id="ff-squawk"   onclick="setFlightFilter('squawk')">⚠ SQUAWK</button>
+    <button class="fbtn"        id="ff-mideast"  onclick="setFlightFilter('mideast')">MIDDLE EAST</button>
+    <button class="fbtn"        id="ff-europe"   onclick="setFlightFilter('europe')">EUROPE</button>
+    <button class="fbtn"        id="ff-asia"     onclick="setFlightFilter('asia')">ASIA</button>
+    <button class="fbtn"        id="ff-americas" onclick="setFlightFilter('americas')">AMERICAS</button>
+    <button class="fbtn on-red" id="ff-conflict"  onclick="setFlightFilter('conflict')">⚠ OVER CONFLICT</button>
+  </div>
+
+  <!-- Column headers -->
+  <div class="fl-hdr">
+    <span>CALLSIGN</span><span>COUNTRY</span><span>ALT (m)</span><span>SPD (kt)</span><span>HDG °</span><span>STATUS</span>
+  </div>
+
+  <!-- Flight list -->
+  <div class="tracker-list" id="ft-list">
+    <div style="padding:20px;text-align:center;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">FETCHING LIVE DATA…</div>
+  </div>
+</div>
+
+<!-- ══════════ LIVE FLEET TRACKER PANEL ══════════ -->
+<div id="fleet-tracker-panel">
+  <div class="tracker-header">
+    <div>
+      <div class="tracker-title" style="color:#4488ff;">⚓ LIVE FLEET TRACKER</div>
+      <div class="tracker-status">NAVAL ASSETS · COMMERCIAL SHIPPING · DARK VESSEL MONITOR</div>
+    </div>
+    <div style="margin-left:12px;">
+      <div class="tracker-count" style="color:#4488ff" id="fleet-count">—</div>
+      <div class="tracker-status" id="fleet-status">LOADING…</div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-num" style="color:var(--red)" id="fls-naval">—</div><div class="stat-lbl">NAVAL</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--amb)" id="fls-cargo">—</div><div class="stat-lbl">CARGO/TANKER</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--red)" id="fls-dark">—</div><div class="stat-lbl">AIS DARK</div></div>
+    <div class="stat-cell"><div class="stat-num" style="color:var(--medium)" id="fls-choke">15</div><div class="stat-lbl">CONFLICT FLEET</div></div>
+  </div>
+
+  <div class="ais-notice">
+    ⚠ LIVE AIS: OPENSEAMAP OVERLAY ACTIVE · VESSEL TILES UPDATING · CLICK MAP VESSELS FOR DETAILS
+  </div>
+
+  <!-- Filters -->
+  <div class="filter-bar">
+    <span style="font-family:Share Tech Mono,monospace;font-size:8px;color:var(--txt2);letter-spacing:1px;padding:2px 4px;">FILTER:</span>
+    <button class="fbtn on"     id="vf-all"      onclick="setVesselFilter('all')">ALL</button>
+    <button class="fbtn on-red" id="vf-naval"    onclick="setVesselFilter('naval')">NAVAL</button>
+    <button class="fbtn"        id="vf-cargo"    onclick="setVesselFilter('cargo')">CARGO</button>
+    <button class="fbtn"        id="vf-tanker"   onclick="setVesselFilter('tanker')">TANKER</button>
+    <button class="fbtn on-red" id="vf-dark"     onclick="setVesselFilter('dark')">⬤ AIS DARK</button>
+    <button class="fbtn on-amb" id="vf-conflict" onclick="setVesselFilter('conflict')">⚠ CONFLICT ZONE</button>
+    <button class="fbtn"        id="vf-hormuz"   onclick="flyToChokepoint(26.5,56.2)">HORMUZ</button>
+    <button class="fbtn"        id="vf-bab"      onclick="flyToChokepoint(12.5,43.5)">BAB-EL-MANDEB</button>
+    <button class="fbtn"        id="vf-suez"     onclick="flyToChokepoint(31.2,32.4)">SUEZ</button>
+  </div>
+
+  <!-- Column headers -->
+  <div class="vs-hdr">
+    <span>VESSEL NAME</span><span>TYPE/FLAG</span><span>SPEED</span><span>HDG</span><span>STATUS</span>
+  </div>
+
+  <!-- Vessel list -->
+  <div class="tracker-list" id="fleet-list"></div>
+
+  <!-- Dark vessel section -->
+  <div style="padding:6px 10px;border-top:1px solid var(--border2);flex-shrink:0;background:rgba(255,48,48,.03);">
+    <div style="font-family:Share Tech Mono,monospace;font-size:8px;color:var(--red);letter-spacing:2px;margin-bottom:5px;">◈ AIS DARK VESSEL ALERTS</div>
+    <div id="dark-vessel-tracker-list"></div>
+  </div>
+</div>
+
+<!-- ══════════ LEFT PANEL ══════════ -->
+<div class="panel" id="left-panel">
+
+  <div class="psec">
+    <div class="ptitle">ACTIVE CONFLICTS <span style="font-size:9px;font-family:'Share Tech Mono',monospace;color:var(--txt2)" id="conf-total-lbl">43 ZONES</span></div>
+    <div style="display:flex;gap:10px;">
+      <div><div class="bignum red" id="stat-deaths">847K</div><div class="bigsub">EST. CASUALTIES YTD</div></div>
+      <div><div class="bignum amb">43</div><div class="bigsub">ACTIVE ZONES</div></div>
+    </div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">CRITICAL ZONES</div>
+    <div id="conflict-list-critical"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">HIGH SEVERITY</div>
+    <div id="conflict-list-high"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">MEDIUM / MONITOR</div>
+    <div id="conflict-list-med"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">GPS JAMMING ZONES</div>
+    <div id="jam-list-panel"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">SIGINT INDICATORS</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:8px;letter-spacing:.5px;" id="sigint-panel"></div>
+  </div>
+
+</div>
+
+<!-- ══════════ RIGHT PANEL ══════════ -->
+<div class="panel" id="right-panel">
+
+  <div class="psec">
+    <div class="ptitle">LIVE ADS-B FEED</div>
+    <div style="display:flex;align-items:baseline;gap:8px;">
+      <div class="bignum grn" id="live-count">—</div>
+      <div style="font-size:8px;color:var(--grn);font-family:'Share Tech Mono',monospace;" id="adsb-status">CONNECTING…</div>
+    </div>
+    <div class="bigsub">AIRCRAFT · OPENSKY NETWORK · LIVE</div>
+    <div style="margin-top:5px;display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--txt2);">
+      <span id="adsb-fetch-txt">AWAITING DATA…</span>
+      <span id="adsb-countdown"></span>
+    </div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">TOP AIRCRAFT IN CONFLICT ZONES</div>
+    <div id="flt-list" style="max-height:150px;overflow-y:auto;scrollbar-width:none;"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">AIS MARITIME ASSETS</div>
+    <div class="alert-box">⚠ AIS DARK ZONES: STRAIT OF HORMUZ, BAB-EL-MANDEB</div>
+    <div id="ship-list"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">ORBITAL SAT PASSES · CONFLICT ZONES</div>
+    <div id="sat-panel-list"></div>
+  </div>
+
+  <div class="psec">
+    <div class="ptitle-sm">OSINT EVENT STREAM</div>
+    <div class="feed-wrap" id="event-feed"></div>
+  </div>
+
+</div>
+
+<!-- ══════════ MAP HUDS ══════════ -->
+<div class="hud hud-bl">
+  <div class="hud-h">◈ DATA SOURCES</div>
+  <div>ACLED · LIVEUAMAP · CRISISWATCH</div>
+  <div>OPENSKY · ADS-B EXCHANGE · OSINT</div>
+  <div>ESRI WORLD IMAGERY · MARINETRAFFIC</div>
+  <div>CELESTRAK TLE · GLOBAL CONFLICT TRACKER</div>
+</div>
+<div class="hud hud-br">
+  <div class="hud-h">◈ COVERAGE STATUS</div>
+  <div style="color:rgba(57,255,106,.6)">43 ZONES MONITORED · LIVE</div>
+  <div style="margin-top:3px;" class="hud-h">◈ LAST ACLED SYNC</div>
+  <div id="acled-sync-time">--:-- UTC</div>
+  <div style="margin-top:3px;" class="hud-h">◈ PLATFORM VERSION</div>
+  <div>WARWATCH v3.1 · OSINT TIER</div>
+</div>
+
+<!-- ══════════ BASEMAP SWITCHER ══════════ -->
+<div id="basemap-switcher">
+  <span style="font-family:'Share Tech Mono',monospace;font-size:8px;color:var(--txt2);letter-spacing:2px;padding:3px 6px 3px 0;border-right:1px solid var(--border);margin-right:3px;">BASEMAP</span>
+  <button class="bmbtn" id="bm-satellite"      onclick="switchBasemap('satellite')">🛰 SATELLITE</button>
+  <button class="bmbtn active" id="bm-esri"    onclick="switchBasemap('esri')">🌍 ESRI</button>
+  <button class="bmbtn" id="bm-hybrid"         onclick="switchBasemap('hybrid')">🗺 HYBRID</button>
+  <button class="bmbtn" id="bm-topo"           onclick="switchBasemap('topo')">⛰ TOPO</button>
+  <button class="bmbtn" id="bm-dark"           onclick="switchBasemap('dark')">◼ DARK</button>
+  <button class="bmbtn" id="bm-terrain"        onclick="switchBasemap('terrain')">🌿 TERRAIN</button>
+</div>
+<div id="basemap-label">ESRI WORLD IMAGERY</div>
+
+<!-- ══════════ LEGEND ══════════ -->
+<div id="legend">
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:2px;color:var(--cyn);margin-bottom:4px;">LEGEND</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--critical);box-shadow:0 0 4px var(--critical)"></div>CRITICAL CONFLICT</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--high);box-shadow:0 0 4px var(--high)"></div>HIGH SEVERITY</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--medium)"></div>MEDIUM SEVERITY</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--monitor)"></div>MONITOR</div>
+  <div class="leg-row"><div class="leg-dot" style="background:var(--grn)"></div>LIVE AIRCRAFT</div>
+  <div class="leg-row"><div class="leg-dot" style="background:#4488ff"></div>NAVAL ASSET</div>
+  <div class="leg-row"><div class="leg-sq" style="background:var(--amb)"></div>GPS JAM ZONE</div>
+  <div class="leg-row"><div class="leg-sq" style="background:rgba(0,229,255,.3)"></div>CHOKEPOINT</div>
+</div>
+
+<!-- ══════════ BOTTOM BAR ══════════ -->
+<div id="bottombar">
+  <!-- Sparkline -->
+  <div class="bb-section" style="flex:.8">
+    <div class="bb-title">GLOBAL INCIDENT TREND · 30D</div>
+    <div class="sparkbar" id="sparkbar"></div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--txt2);margin-top:2px;">
+      <span>ACLED EVENTS/DAY · </span><span style="color:var(--red)" id="today-events">—</span>
+    </div>
+  </div>
+
+  <!-- Bottlenecks -->
+  <div class="bb-section" style="flex:1.2">
+    <div class="bb-title">MARITIME CHOKEPOINTS · STATUS</div>
+    <div class="bneck" id="bottleneck-panel"></div>
+  </div>
+
+  <!-- AIS Dark vessels -->
+  <div class="bb-section">
+    <div class="bb-title">DARK VESSEL TRACKER</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:8px;" id="dark-vessel-panel"></div>
+  </div>
+
+  <!-- Alert log -->
+  <div class="bb-section" style="border-right:none;">
+    <div class="bb-title">RECENT ALERTS</div>
+    <div style="font-family:'Share Tech Mono',monospace;font-size:8px;overflow:hidden;height:72px;" id="alert-log"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+//  DATA: CONFLICT ZONES 2026
+// ═══════════════════════════════════════════════════════════════════════
+const CONFLICTS = [
+  // CRITICAL
+  {id:'ukraine',  name:'UKRAINE – RUSSIA WAR',        lat:49.0,  lon:32.0,  sev:'critical', type:'WAR',        deaths:'120K+',  actors:'UKR vs RUS',      detail:'Full-scale invasion. Eastern front active. Kharkiv, Zaporizhzhia, Donetsk lines contested.',   radius:380000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/europe/ukraine/'},{l:'BBC',u:'https://www.bbc.com/news/topics/c302m85q5ljt'},{l:'ACLED',u:'https://acleddata.com/ukraine-crisis/'},{l:'Liveuamap',u:'https://liveuamap.com/'}],
+   acled:'https://acleddata.com/ukraine-crisis/', icg:'https://www.crisisgroup.org/europe-central-asia/eastern-europe/ukraine', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/conflict-ukraine'},
+  {id:'gaza',     name:'GAZA – ISRAEL',                lat:31.5,  lon:34.5,  sev:'critical', type:'ARMED CONF', deaths:'55K+',   actors:'IDF vs HAMAS',    detail:'Urban warfare, humanitarian crisis. West Bank tensions elevated. Lebanese border active.',   radius:60000,
+   sources:[{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/israel-palestine-conflict/'},{l:'Reuters',u:'https://www.reuters.com/world/middle-east/'},{l:'OCHA',u:'https://www.ochaopt.org/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/israeli-palestinian-conflict'}],
+   acled:'https://acleddata.com/israel-palestine/', icg:'https://www.crisisgroup.org/middle-east-north-africa/east-mediterranean-mena/israelpalestine', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/israeli-palestinian-conflict'},
+  {id:'sudan',    name:'SUDAN CIVIL WAR',              lat:15.5,  lon:32.5,  sev:'critical', type:'CIVIL WAR',  deaths:'150K+',  actors:'SAF vs RSF',      detail:'SAF vs RSF conflict. Khartoum contested. Mass displacement. Darfur atrocities reported.',   radius:350000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/sudan/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/sudan/'},{l:'ACLED',u:'https://acleddata.com/tag/sudan/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/horn-africa/sudan'}],
+   acled:'https://acleddata.com/tag/sudan/', icg:'https://www.crisisgroup.org/africa/horn-africa/sudan', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/civil-war-sudan'},
+  {id:'myanmar',  name:'MYANMAR CIVIL WAR',            lat:21.0,  lon:96.5,  sev:'critical', type:'CIVIL WAR',  deaths:'50K+',   actors:'Junta vs EAOs',   detail:'Military junta losing territory to EAOs. Naypyidaw under pressure. Shan, Chin, Karen offensives.',  radius:200000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/asia-pacific/myanmar/'},{l:'Radio Free Asia',u:'https://www.rfa.org/english/myanmar'},{l:'ICG',u:'https://www.crisisgroup.org/asia/south-east-asia/myanmar'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/conflict-myanmar'}],
+   acled:'https://acleddata.com/tag/myanmar/', icg:'https://www.crisisgroup.org/asia/south-east-asia/myanmar', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/conflict-myanmar'},
+  {id:'hamaslebanon', name:'SOUTH LEBANON',            lat:33.2,  lon:35.5,  sev:'critical', type:'ARMED CONF', deaths:'4K+',    actors:'IDF vs Hezbollah',detail:'IDF operations continuing. Hezbollah rocket exchanges. Ceasefire fragile.',                  radius:55000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/middle-east/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/lebanon/'},{l:'ICG',u:'https://www.crisisgroup.org/middle-east-north-africa/east-mediterranean-mena/lebanon'},{l:'Liveuamap',u:'https://israel.liveuamap.com/'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/middle-east-north-africa/east-mediterranean-mena/lebanon', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'yemen',    name:'YEMEN CONFLICT',               lat:15.4,  lon:44.2,  sev:'critical', type:'ARMED CONF', deaths:'380K+',  actors:'Houthis vs Coalition', detail:'Houthi attacks on Red Sea shipping. Coalition airstrikes. Humanitarian catastrophe continues.', radius:220000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/middle-east/yemen/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/yemen/'},{l:'ACLED',u:'https://acleddata.com/tag/yemen/'},{l:'OCHA',u:'https://www.unocha.org/yemen'}],
+   acled:'https://acleddata.com/tag/yemen/', icg:'https://www.crisisgroup.org/middle-east-north-africa/gulf-and-arabian-peninsula/yemen', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/war-yemen'},
+  {id:'drc',      name:'DR CONGO – EAST',              lat:-1.5,  lon:29.0,  sev:'critical', type:'CIVIL WAR',  deaths:'6M+',    actors:'M23/RDF vs DRC',  detail:'M23 rebel advance. Goma contested. Rwanda-backed forces accused. Worst humanitarian crisis.',  radius:150000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/democratic-republic-of-the-congo/'},{l:'ACLED',u:'https://acleddata.com/tag/democratic-republic-of-congo/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/central-africa/democratic-republic-congo'}],
+   acled:'https://acleddata.com/tag/democratic-republic-of-congo/', icg:'https://www.crisisgroup.org/africa/central-africa/democratic-republic-congo', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/violence-democratic-republic-congo'},
+  {id:'sahel',    name:'SAHEL – MALI/BURKINA/NIGER',   lat:14.5,  lon:-1.5,  sev:'critical', type:'INSURGENCY', deaths:'25K+',   actors:'JNIM vs Govts',   detail:'JNIM/ISWAP insurgencies across Sahel belt. Military coups aftermath. Wagner/Africa Corps presence.', radius:400000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/sahel/'},{l:'ACLED',u:'https://acleddata.com/tag/sahel/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/sahel'}],
+   acled:'https://acleddata.com/tag/sahel/', icg:'https://www.crisisgroup.org/africa/sahel', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  // HIGH
+  {id:'somalia',  name:'SOMALIA – AL-SHABAAB',         lat:5.5,   lon:46.2,  sev:'high',     type:'INSURGENCY', deaths:'12K+',   actors:'AMISOM vs AS',    detail:'Al-Shabaab controls rural areas. Mogadishu bombings. ATMIS drawdown ongoing.',                radius:200000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/somalia/'},{l:'ACLED',u:'https://acleddata.com/tag/somalia/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/horn-africa/somalia'}],
+   acled:'https://acleddata.com/tag/somalia/', icg:'https://www.crisisgroup.org/africa/horn-africa/somalia', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/al-shabaab-somalia'},
+  {id:'ethiopia', name:'ETHIOPIA – AMHARA/OROMO',      lat:10.0,  lon:38.5,  sev:'high',     type:'ARMED CONF', deaths:'30K+',   actors:'FANO vs ENDF',    detail:'Post-Tigray conflict. Amhara Fano insurgency. Oromo Liberation Army active. Multiple fronts.', radius:180000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/ethiopia/'},{l:'ACLED',u:'https://acleddata.com/tag/ethiopia/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/horn-africa/ethiopia'}],
+   acled:'https://acleddata.com/tag/ethiopia/', icg:'https://www.crisisgroup.org/africa/horn-africa/ethiopia', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'nigeria',  name:'NIGERIA – NW BANDITRY/NE',     lat:11.8,  lon:13.2,  sev:'high',     type:'INSURGENCY', deaths:'10K+',   actors:'ISWAP vs Nigeria', detail:'ISWAP northeast. Bandit attacks northwest. Farmer-herder violence. Lake Chad basin.',          radius:200000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/nigeria/'},{l:'ACLED',u:'https://acleddata.com/tag/nigeria/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/boko-haram'}],
+   acled:'https://acleddata.com/tag/nigeria/', icg:'https://www.crisisgroup.org/africa/west-africa/nigeria', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/boko-haram'},
+  {id:'haiti',    name:'HAITI GANG CRISIS',             lat:18.9,  lon:-72.3, sev:'high',     type:'GANG WAR',   deaths:'5K+',    actors:'Gangs vs Govt',   detail:'Gang control of Port-au-Prince. MMAS deployed. Government authority collapsed.',              radius:40000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/americas/haiti/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/haiti/'},{l:'ICG',u:'https://www.crisisgroup.org/latin-america-caribbean/haiti'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/instability-haiti'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/latin-america-caribbean/haiti', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/instability-haiti'},
+  {id:'pakistan', name:'PAKISTAN – TTP',               lat:33.7,  lon:70.2,  sev:'high',     type:'INSURGENCY', deaths:'3K+',    actors:'TTP vs Pakistan', detail:'Tehrik-i-Taliban Pakistan attacks escalating. Cross-border from Afghanistan.',              radius:120000,
+   sources:[{l:'Dawn',u:'https://www.dawn.com/'},{l:'Reuters',u:'https://www.reuters.com/world/asia-pacific/pakistan/'},{l:'ACLED',u:'https://acleddata.com/tag/pakistan/'},{l:'ICG',u:'https://www.crisisgroup.org/asia/south-asia/pakistan'}],
+   acled:'https://acleddata.com/tag/pakistan/', icg:'https://www.crisisgroup.org/asia/south-asia/pakistan', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'mozambique',name:'MOZAMBIQUE – CABO DELGADO',   lat:-12.3, lon:40.5,  sev:'high',     type:'INSURGENCY', deaths:'5K+',    actors:'ISCAP vs FDSM',   detail:'ISIS-affiliate insurgency in gas-rich Cabo Delgado. RWANDESE forces assisting.',              radius:80000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/mozambique/'},{l:'ACLED',u:'https://acleddata.com/tag/mozambique/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/southern-africa/mozambique'}],
+   acled:'https://acleddata.com/tag/mozambique/', icg:'https://www.crisisgroup.org/africa/southern-africa/mozambique', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'iran_isr', name:'IRAN – ISRAEL STANDOFF',       lat:32.0,  lon:53.0,  sev:'high',     type:'STANDOFF',   deaths:'200+',   actors:'Iran vs Israel',  detail:'Missile/drone exchanges. Proxy war via Hezbollah/Houthis. Nuclear diplomacy stalled.',      radius:250000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/middle-east/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/iran/'},{l:'Haaretz',u:'https://www.haaretz.com/iran-news'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/middle-east-north-africa/gulf-and-arabian-peninsula/iran', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'southchinasea', name:'SOUTH CHINA SEA',         lat:14.0,  lon:115.0, sev:'high',     type:'TERRITORIAL',deaths:'—',     actors:'PRC vs ASEAN',    detail:'PRC coast guard confrontations with Philippines. Spratlys/Paracels militarized. US patrols.',  radius:350000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/asia-pacific/'},{l:'AMTI CSIS',u:'https://amti.csis.org/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/south-china-sea/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/territorial-disputes-south-china-sea'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/territorial-disputes-south-china-sea'},
+  // MEDIUM
+  {id:'mexico',   name:'MEXICO CARTEL WARS',           lat:24.5,  lon:-104.2,sev:'medium',   type:'CARTEL',     deaths:'30K/yr', actors:'Multiple Cartels',detail:'CJNG vs Sinaloa. Record homicide rates. Sinaloa fragmentation. Northern border destabilized.', radius:250000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/americas/'},{l:'InSight Crime',u:'https://insightcrime.org/tag/mexico/'},{l:'ACLED',u:'https://acleddata.com/tag/mexico/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/mexico-drug-war'}],
+   acled:'https://acleddata.com/tag/mexico/', icg:'https://www.crisisgroup.org/', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/mexico-drug-war'},
+  {id:'taiwan',   name:'TAIWAN STRAIT TENSION',        lat:24.0,  lon:120.5, sev:'medium',   type:'STANDOFF',   deaths:'—',     actors:'PRC vs ROC/US',   detail:'PLA military exercises. ADIZ incursions. US arms sales. Diplomatic isolation pressure.',        radius:150000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/asia-pacific/'},{l:'Taipei Times',u:'https://www.taipeitimes.com/'},{l:'AMTI CSIS',u:'https://amti.csis.org/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/cross-strait-relations'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/cross-strait-relations'},
+  {id:'armenia',  name:'ARMENIA – AZERBAIJAN',         lat:40.5,  lon:46.5,  sev:'medium',   type:'STANDOFF',   deaths:'500+',   actors:'ARM vs AZE',      detail:'Post-Nagorno-Karabakh. Border demarcation ongoing. Syunik corridor tensions.',               radius:80000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/europe/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/armenia/'},{l:'ICG',u:'https://www.crisisgroup.org/europe-central-asia/south-caucasus/nagorny-karabakh'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/europe-central-asia/south-caucasus/nagorny-karabakh', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'cameroon', name:'CAMEROON – ANGLOPHONE',        lat:5.8,   lon:10.1,  sev:'medium',   type:'INSURGENCY', deaths:'6K+',    actors:'Ambazonia vs CMR',detail:'Anglophone separatist conflict in Northwest/Southwest regions. Ghost town campaigns.',         radius:80000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/cameroon/'},{l:'ACLED',u:'https://acleddata.com/tag/cameroon/'},{l:'ICG',u:'https://www.crisisgroup.org/africa/central-africa/cameroon'}],
+   acled:'https://acleddata.com/tag/cameroon/', icg:'https://www.crisisgroup.org/africa/central-africa/cameroon', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'iraq',     name:'IRAQ – ISIS REMNANTS',         lat:34.0,  lon:43.5,  sev:'medium',   type:'INSURGENCY', deaths:'2K+',    actors:'ISIS vs Iraq/Kurd',detail:'ISIS sleeper cells in Iraq/Syria. Desert province attacks. PMF-US tensions.',               radius:140000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/middle-east/iraq/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/iraq/'},{l:'ACLED',u:'https://acleddata.com/tag/iraq/'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker/conflict/islamic-state'}],
+   acled:'https://acleddata.com/tag/iraq/', icg:'https://www.crisisgroup.org/middle-east-north-africa/gulf-and-arabian-peninsula/iraq', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/islamic-state'},
+  {id:'westbank', name:'WEST BANK OPERATIONS',         lat:32.0,  lon:35.2,  sev:'medium',   type:'ARMED CONF', deaths:'1K+',    actors:'IDF vs PA/Militants',detail:'IDF operations in Jenin, Tulkarm, Nablus. Settlement expansion. PA authority weakening.',  radius:45000,
+   sources:[{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/west-bank/'},{l:'Reuters',u:'https://www.reuters.com/world/middle-east/'},{l:'OCHA',u:'https://www.ochaopt.org/'},{l:'B\'Tselem',u:'https://www.btselem.org/'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/middle-east-north-africa/east-mediterranean-mena/israelpalestine', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/israeli-palestinian-conflict'},
+  {id:'kosovo',   name:'SERBIA – KOSOVO',              lat:42.7,  lon:21.2,  sev:'medium',   type:'STANDOFF',   deaths:'—',     actors:'SRB vs KOS',      detail:'Northern Kosovo tensions. NATO KFOR presence. Serbia-EU negotiation stalled.',                radius:40000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/europe/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/kosovo/'},{l:'ICG',u:'https://www.crisisgroup.org/europe-central-asia/balkans/kosovo'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/europe-central-asia/balkans/kosovo', cfr:'https://www.cfr.org/global-conflict-tracker'},
+  {id:'libya',    name:'LIBYA FRAGMENTATION',          lat:27.0,  lon:17.0,  sev:'medium',   type:'CIVIL CONF', deaths:'2K+',    actors:'GNS vs GNU',      detail:'East-West split persists. Wagner successor forces in east. Turkey-backed GNU in west.',         radius:220000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/africa/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/libya/'},{l:'ACLED',u:'https://acleddata.com/tag/libya/'},{l:'ICG',u:'https://www.crisisgroup.org/middle-east-north-africa/north-africa/libya'}],
+   acled:'https://acleddata.com/tag/libya/', icg:'https://www.crisisgroup.org/middle-east-north-africa/north-africa/libya', cfr:'https://www.cfr.org/global-conflict-tracker/conflict/civil-war-libya'},
+  {id:'venezuela',name:'VENEZUELA – ESSEQUIBO',        lat:7.0,   lon:-61.0, sev:'medium',   type:'STANDOFF',   deaths:'—',     actors:'VEN vs GUY',      detail:'Venezuela Essequibo annexation claim. Military buildup. US mediation. Guyana oil boom.',      radius:100000,
+   sources:[{l:'Reuters',u:'https://www.reuters.com/world/americas/'},{l:'Al Jazeera',u:'https://www.aljazeera.com/tag/venezuela/'},{l:'ICG',u:'https://www.crisisgroup.org/latin-america-caribbean/andes/venezuela'},{l:'CFR',u:'https://www.cfr.org/global-conflict-tracker'}],
+   acled:'https://acleddata.com/', icg:'https://www.crisisgroup.org/latin-america-caribbean/andes/venezuela', cfr:'https://www.cfr.org/global-conflict-tracker'},
+];
+
+const JAMMING_ZONES = [
+  {lat:32.0, lon:35.2,  name:'ISRAEL/WEST BANK', intensity:'CRITICAL', radius:200000, col:'#ff0000'},
+  {lat:48.0, lon:37.5,  name:'UKRAINE EAST',     intensity:'HIGH',     radius:350000, col:'#ff6600'},
+  {lat:15.4, lon:44.2,  name:'YEMEN (HOUTHIS)',  intensity:'HIGH',     radius:200000, col:'#ff6600'},
+  {lat:35.7, lon:51.4,  name:'IRAN',             intensity:'HIGH',     radius:300000, col:'#ff6600'},
+  {lat:55.8, lon:37.6,  name:'MOSCOW REGION',    intensity:'MOD',      radius:250000, col:'#ffaa00'},
+  {lat:36.2, lon:37.2,  name:'NW SYRIA',         intensity:'MOD',      radius:150000, col:'#ffaa00'},
+  {lat:14.5, lon:-1.5,  name:'SAHEL REGION',     intensity:'LOW',      radius:200000, col:'#ffcc00'},
+];
+
+const CHOKEPOINTS = [
+  {lat:26.5,  lon:56.2,  name:'STRAIT OF HORMUZ',     traffic:'HIGH',    threat:'CRITICAL', daily:'21M bbl/day',  col:'#ff3030'},
+  {lat:12.5,  lon:43.5,  name:'BAB-EL-MANDEB',        traffic:'REDUCED', threat:'CRITICAL', daily:'3.8M bbl/day', col:'#ff3030'},
+  {lat:31.2,  lon:32.4,  name:'SUEZ CANAL',            traffic:'REDUCED', threat:'HIGH',     daily:'12% trade',    col:'#ff6600'},
+  {lat:24.0,  lon:121.5, name:'TAIWAN STRAIT',         traffic:'NORMAL',  threat:'HIGH',     daily:'26% trade',    col:'#ff6600'},
+  {lat:1.3,   lon:103.8, name:'STRAIT OF MALACCA',     traffic:'NORMAL',  threat:'MEDIUM',   daily:'25% trade',    col:'#ffaa00'},
+  {lat:37.0,  lon:30.0,  name:'TURKISH STRAITS',       traffic:'NORMAL',  threat:'MEDIUM',   daily:'3M bbl/day',   col:'#ffaa00'},
+  {lat:29.0,  lon:-13.5, name:'CANARY/SAHEL PASSAGE',  traffic:'NORMAL',  threat:'LOW',      daily:'Monitor',      col:'#ffcc00'},
+];
+
+const NAVAL_ASSETS = [
+  {name:'USS GERALD FORD CVN-78', type:'CARRIER',   lat:21.0, lon:62.0,  hdg:340, spd:22.0, flag:'US', col:'#ff4444', force:'USN CSG'},
+  {name:'USS DWIGHT D. EISENHOWER',type:'CARRIER',  lat:32.5, lon:34.8,  hdg:270, spd:14.0, flag:'US', col:'#ff4444', force:'USN CSG'},
+  {name:'HMS PRINCE OF WALES',    type:'CARRIER',   lat:36.0, lon:-8.0,  hdg:90,  spd:16.0, flag:'GB', col:'#ff6644', force:'RN CSG'},
+  {name:'FS CHARLES DE GAULLE',   type:'CARRIER',   lat:43.2, lon:5.5,   hdg:180, spd:18.0, flag:'FR', col:'#ff8844', force:'MN CSG'},
+  {name:'CSS SHANDONG CV-17',     type:'CARRIER',   lat:18.5, lon:113.5, hdg:50,  spd:20.0, flag:'CN', col:'#ff2244', force:'PLAN CSG'},
+  {name:'USS ARLEIGH BURKE DDG',  type:'DESTROYER', lat:12.6, lon:43.8,  hdg:180, spd:18.0, flag:'US', col:'#ff5555', force:'USN'},
+  {name:'HMS DIAMOND D34',        type:'DESTROYER', lat:13.2, lon:44.5,  hdg:200, spd:16.0, flag:'GB', col:'#ff7744', force:'RN'},
+  {name:'MT BASRA WIND',          type:'TANKER',    lat:29.8, lon:48.9,  hdg:135, spd:8.4,  flag:'IR', col:'#ffaa00', force:'CIVILIAN'},
+  {name:'MV GALAXY LEADER',       type:'CARGO',     lat:14.8, lon:43.2,  hdg:0,   spd:0,    flag:'--', col:'#ff2244', force:'SEIZED-HOUTHI'},
+  {name:'MV RED PIONEER',         type:'CARGO',     lat:25.5, lon:56.5,  hdg:310, spd:11.0, flag:'MH', col:'#ffaa00', force:'REROUTED'},
+];
+
+// ── Commercial fleet rerouting in conflict zones
+const COMMERCIAL_FLEET_ZONES = [
+  // Red Sea / Yemen conflict zone — vessels avoiding or transiting
+  {name:'MSC ALTAMIRA',    type:'CONTAINER', airline:'MSC',      lat:12.1,lon:44.0, hdg:335,spd:14.2,flag:'🇵🇦',zone:'RED SEA',    status:'REROUTING',  threat:'HIGH',   detail:'Container ship rerouting via Cape of Good Hope. Avoiding Bab-el-Mandeb due to Houthi threat.'},
+  {name:'EVER GIVEN II',   type:'CONTAINER', airline:'EVERGREEN', lat:13.5,lon:43.2, hdg:190,spd:9.1, flag:'🇹🇼',zone:'RED SEA',    status:'AVOIDING',   threat:'HIGH',   detail:'Evergreen mega-carrier holding south of Bab-el-Mandeb pending security clearance.'},
+  {name:'MAERSK HANGZHOU', type:'CONTAINER', airline:'MAERSK',   lat:11.8,lon:44.8, hdg:155,spd:7.5, flag:'🇩🇰',zone:'RED SEA',    status:'SLOW STEAM', threat:'CRITICAL',detail:'Maersk vessel under escort after near-miss drone attack. Armed guards embarked.'},
+  {name:'MT PACIFIC GEM',  type:'TANKER',    airline:'—',        lat:14.2,lon:42.8, hdg:320,spd:11.0,flag:'🇬🇷',zone:'RED SEA',    status:'TRANSIT',    threat:'HIGH',   detail:'Oil tanker with US Navy escort. Declaring cargo: crude oil, Saudi origin.'},
+  {name:'OOCL EGYPT',      type:'CONTAINER', airline:'OOCL',     lat:15.8,lon:41.5, hdg:180,spd:6.0, flag:'🇭🇰',zone:'RED SEA',    status:'DIVERTED',   threat:'CRITICAL',detail:'Diverted from Suez Canal route. Adding 14 days via Cape Horn. Cargo: electronics.'},
+  // Strait of Hormuz — Iran pressure zone
+  {name:'MT SOUNION',      type:'TANKER',    airline:'—',        lat:26.3,lon:56.1, hdg:300,spd:8.5, flag:'🇬🇷',zone:'HORMUZ',     status:'SEIZED RISK',threat:'CRITICAL',detail:'Greek tanker. IRGCN previously seized vessel of same operator. Armed escort requested.'},
+  {name:'ADVANTAGE SWEET', type:'TANKER',    airline:'—',        lat:25.8,lon:57.2, hdg:120,spd:9.8, flag:'🇲🇭',zone:'HORMUZ',     status:'MONITORED',  threat:'HIGH',   detail:'Marshall Islands flagged tanker. Transiting Hormuz under watchlist due to cargo origin.'},
+  {name:'MT NIOVI',        type:'TANKER',    airline:'—',        lat:27.0,lon:55.5, hdg:270,spd:10.2,flag:'🇬🇷',zone:'HORMUZ',     status:'TRANSIT',    threat:'HIGH',   detail:'Crude tanker carrying Iranian oil under sanctions designation. Monitoring active.'},
+  // Gaza / East Med — Israeli port disruption
+  {name:'ZIM MOUNT CARMEL',type:'CONTAINER', airline:'ZIM',      lat:32.5,lon:34.9, hdg:270,spd:5.2, flag:'🇮🇱',zone:'E.MED',      status:'PORT HOLD',  threat:'HIGH',   detail:'Israeli container ship. Haifa port operations disrupted. Vessel holding offshore.'},
+  {name:'MSC TUSCANY',     type:'CONTAINER', airline:'MSC',      lat:31.2,lon:32.8, hdg:0,  spd:0,   flag:'🇵🇦',zone:'E.MED',      status:'ANCHORED',   threat:'MEDIUM', detail:'Anchored awaiting Suez southbound slot. Canal traffic reduced 45% due to Red Sea crisis.'},
+  // Taiwan Strait — PLAN exercise zone
+  {name:'EVER TROPHY',     type:'CONTAINER', airline:'EVERGREEN', lat:24.8,lon:122.5,hdg:15, spd:12.0,flag:'🇹🇼',zone:'TAIWAN STR', status:'MONITORED',  threat:'HIGH',   detail:'Evergreen vessel transiting strait during PLAN exercise window. Tracking active.'},
+  {name:'COSCO DEVELOPMENT',type:'CONTAINER',airline:'COSCO',    lat:23.5,lon:120.8,hdg:350,spd:14.5,flag:'🇨🇳',zone:'TAIWAN STR', status:'NORMAL',     threat:'MEDIUM', detail:'COSCO vessel transiting home waters. No disruption reported.'},
+  // Ukraine / Black Sea grain route
+  {name:'MV RESILIENT AFRICA',type:'BULK',  airline:'—',        lat:46.2,lon:31.8, hdg:180,spd:8.0, flag:'🇲🇹',zone:'BLACK SEA',  status:'GRAIN ROUTE',threat:'HIGH',   detail:'Bulk carrier under humanitarian grain corridor. Black Sea passage active with UN monitoring.'},
+  {name:'MV SEA FLOWER',    type:'BULK',    airline:'—',        lat:44.8,lon:33.2, hdg:200,spd:7.5, flag:'🇵🇦',zone:'BLACK SEA',  status:'GRAIN ROUTE',threat:'HIGH',   detail:'Grain vessel. Route cleared by UN/Turkey. Mine risk elevated in northern Black Sea.'},
+  // South China Sea — disputed waters
+  {name:'BRP SIERRA MADRE', type:'WARSHIP', airline:'AFP',      lat:9.8, lon:115.8,hdg:0,  spd:0,   flag:'🇵🇭',zone:'S.CHINA SEA',status:'GROUNDED',   threat:'HIGH',   detail:'Philippine Navy vessel deliberately grounded on Second Thomas Shoal. Resupply missions active.'},
+];
+
+const SAT_PASSES = [
+  {name:'SENTINEL-1A',   type:'SAR',    zone:'UKRAINE',       time:'14:22 UTC', res:'5m',    nat:'EU'},
+  {name:'WORLDVIEW-3',   type:'OPT',    zone:'GAZA',          time:'14:38 UTC', res:'.31m',  nat:'US'},
+  {name:'KH-11',         type:'RECON',  zone:'IRAN',          time:'14:55 UTC', res:'<.1m',  nat:'US'},
+  {name:'YAOGAN-36',     type:'SAR',    zone:'S.CHINA SEA',   time:'15:02 UTC', res:'1m',    nat:'CN'},
+  {name:'OFEK-16',       type:'OPT',    zone:'MIDDLE EAST',   time:'15:18 UTC', res:'.5m',   nat:'IL'},
+  {name:'KOMPSAT-5',     type:'SAR',    zone:'DPRK BORDER',   time:'15:31 UTC', res:'1m',    nat:'KR'},
+  {name:'COSMOS-2576',   type:'RECON',  zone:'UKRAINE FRONT', time:'15:44 UTC', res:'<.5m',  nat:'RU'},
+  {name:'PLANET DOVE',   type:'OPT',    zone:'SUDAN',         time:'15:52 UTC', res:'3m',    nat:'US'},
+];
+
+const SIGINT_DATA = [
+  {label:'ACLED EVENTS TODAY',    val:'847',    col:'red'},
+  {label:'MILITARY COMMS SURGE',  val:'+312%',  col:'amb'},
+  {label:'GPS JAM ZONES ACTIVE',  val:'7',      col:'amb'},
+  {label:'AIS DARK VESSELS',      val:'14',     col:'red'},
+  {label:'SQUAWK 7700 ALERTS',    val:'3',      col:'red'},
+  {label:'AIRSPACE CLOSURES',     val:'9 FIRs', col:'amb'},
+  {label:'CYBER INCIDENTS TODAY', val:'23',     col:'cyn'},
+  {label:'REFUGEE MOVEMENTS',     val:'12M+',   col:'amb'},
+  {label:'DRONE SWARM REPORTS',   val:'6',      col:'red'},
+  {label:'DECONFLICTION LINES',   val:'2 ACTV', col:'grn'},
+];
+
+const EVENT_FEED_DATA = [
+  {t:'15:47:22',type:'airstrike', m:'UKRAINE: Drone strike reported Kharkiv industrial zone. Air raid active.'},
+  {t:'15:44:09',type:'military',  m:'RED SEA: USN DDG intercepts Houthi anti-ship missile. No damage.'},
+  {t:'15:41:33',type:'explosion', m:'SUDAN: SAF airstrike RSF position Khartoum North. 12 reported.'},
+  {t:'15:38:15',type:'cyber',     m:'CYBER: DDoS attacks against Ukrainian power grid infrastructure.'},
+  {t:'15:34:44',type:'military',  m:'MYANMAR: AA captures Laukkaing. SAC losing Shan state ground.'},
+  {t:'15:31:20',type:'naval',     m:'S.CHINA SEA: PLAN coast guard water cannon vs PHI vessel near Scarborough.'},
+  {t:'15:28:05',type:'military',  m:'GAZA: IDF ground operation Rafah Corridor. UNRWA compound struck.'},
+  {t:'15:24:51',type:'explosion', m:'DRC: M23 artillery Goma airport. MONUSCO base targeted.'},
+  {t:'15:21:37',type:'protest',   m:'VENEZUELA: Opposition demonstrators dispersed Caracas. 45 detained.'},
+  {t:'15:18:19',type:'military',  m:'SOMALIA: ATMIS airstrike Al-Shabaab logistics hub Lower Shabelle.'},
+  {t:'15:14:53',type:'diplomacy', m:'UN SECURITY COUNCIL: Emergency session called – Sudan resolution vetoed.'},
+  {t:'15:11:30',type:'military',  m:'TAIWAN STRAIT: PLAN J-16 4 ADIZ incursions. ROC AF scramble.'},
+  {t:'15:08:16',type:'explosion', m:'SAHEL: JNIM IED Burkina Faso highway N1. Convoy hit.'},
+  {t:'15:04:58',type:'naval',     m:'HORMUZ: Commercial tanker reports warning shots from IRGC vessel.'},
+  {t:'15:01:44',type:'military',  m:'UKRAINE: UA forces claim 3 Russian Ka-52 helicopters destroyed Zaporizhzhia.'},
+  {t:'14:58:22',type:'airstrike', m:'LEBANON: IDF precision strike Hezbollah weapons depot Bekaa Valley.'},
+  {t:'14:55:07',type:'info',      m:'ACLED: 847 conflict events recorded past 24h – 18% above 30-day avg.'},
+  {t:'14:51:45',type:'cyber',     m:'CYBER: Iranian APT group targets Israeli critical infrastructure SCADA.'},
+  {t:'14:48:31',type:'explosion', m:'NIGERIA: ISWAP VBIED Maiduguri market. Mass casualty event.'},
+  {t:'14:45:18',type:'diplomacy', m:'UKRAINE: G7 further sanctions package announced targeting Russian energy.'},
+];
+
+const DARK_VESSELS = [
+  {name:'UNKNOWN-01', lastpos:'26.1N 56.8E', dark:'4.2h', threat:'HIGH'},
+  {name:'IRAN VESSEL', lastpos:'27.3N 57.1E', dark:'11.3h', threat:'CRITICAL'},
+  {name:'UNKNOWN-02', lastpos:'13.1N 43.6E', dark:'2.1h', threat:'HIGH'},
+  {name:'MV ALTAI-3', lastpos:'31.9N 35.1E', dark:'6.7h', threat:'MED'},
+  {name:'UNKNOWN-03', lastpos:'12.8N 44.2E', dark:'1.8h', threat:'HIGH'},
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+//  MAP INIT + BASEMAP SWITCHER ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+const map = L.map('map',{center:[25,20],zoom:3,zoomControl:false,attributionControl:true,maxZoom:19,minZoom:2});
+
+// ── Basemap tile definitions ──
+const BASEMAPS = {
+  // ESRI World Imagery — crisp satellite, no key needed, default
+  esri: {
+    label: 'ESRI WORLD IMAGERY',
+    layer: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      {maxZoom:19, attribution:'© Esri, Maxar, Earthstar Geographics'}
+    )
+  },
+  // Google Satellite (via public XYZ tiles — same imagery as Google Maps satellite)
+  satellite: {
+    label: 'GOOGLE SATELLITE',
+    layer: L.tileLayer(
+      'https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+      {subdomains:'0123', maxZoom:20, attribution:'© Google Maps'}
+    )
+  },
+  // Google Hybrid — satellite + road/label overlay
+  hybrid: {
+    label: 'GOOGLE HYBRID',
+    layer: L.tileLayer(
+      'https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+      {subdomains:'0123', maxZoom:20, attribution:'© Google Maps'}
+    )
+  },
+  // Google Terrain
+  topo: {
+    label: 'GOOGLE TERRAIN',
+    layer: L.tileLayer(
+      'https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',
+      {subdomains:'0123', maxZoom:20, attribution:'© Google Maps'}
+    )
+  },
+  // CartoDB Dark Matter — clean dark vector map
+  dark: {
+    label: 'CARTO DARK MATTER',
+    layer: L.tileLayer(
+      'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+      {subdomains:'abcd', maxZoom:19, attribution:'© OpenStreetMap © CartoDB'}
+    )
+  },
+  // ESRI World Terrain
+  terrain: {
+    label: 'ESRI WORLD TERRAIN',
+    layer: L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
+      {maxZoom:13, attribution:'© Esri, USGS, NOAA'}
+    )
+  },
+};
+
+// Dark map tile filter — applied on all satellite views, removed for dark theme
+const FILTERS = {
+  esri:      'brightness(.6) saturate(1.3) hue-rotate(5deg)',
+  satellite: 'brightness(.65) saturate(1.2)',
+  hybrid:    'brightness(.65) saturate(1.2)',
+  topo:      'brightness(.7) saturate(.9) hue-rotate(10deg)',
+  dark:      'brightness(.85) saturate(1.1)',
+  terrain:   'brightness(.7) saturate(.8)',
+};
+
+let currentBasemap = 'esri';
+// Start with ESRI
+BASEMAPS.esri.layer.addTo(map);
+
+// City / boundary labels overlay (shown on satellite views)
+const labelLayer = L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}.png',
+  {subdomains:'abcd', opacity:.38, attribution:'', pane:'shadowPane'}
+);
+labelLayer.addTo(map);
+
+function switchBasemap(name){
+  if(name === currentBasemap) return;
+  // Remove old
+  map.removeLayer(BASEMAPS[currentBasemap].layer);
+  // Add new
+  BASEMAPS[name].layer.addTo(map);
+  BASEMAPS[name].layer.bringToBack();
+  // Label overlay — hide on dark/topo (they already have labels)
+  if(name === 'dark' || name === 'terrain'){
+    labelLayer.setOpacity(0);
+  } else {
+    labelLayer.setOpacity(.38);
+  }
+  // Apply tile filter
+  setTimeout(()=>{
+    const pane = document.querySelector('.leaflet-tile-pane');
+    if(pane) pane.style.filter = FILTERS[name] || FILTERS.esri;
+  }, 80);
+  // Update button states
+  document.querySelectorAll('.bmbtn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('bm-'+name).classList.add('active');
+  // Update label
+  document.getElementById('basemap-label').textContent = BASEMAPS[name].label;
+  currentBasemap = name;
+}
+
+// city name overlay
+// (label layer already added above)
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LAYER GROUPS
+// ═══════════════════════════════════════════════════════════════════════
+const LG = {
+  conflicts:  L.layerGroup().addTo(map),
+  adsb:       L.layerGroup().addTo(map),
+  maritime:   L.layerGroup().addTo(map),
+  satellites: L.layerGroup().addTo(map),
+  jamming:    L.layerGroup().addTo(map),
+  bottleneck: L.layerGroup().addTo(map),
+  infra:      L.layerGroup(),
+};
+
+// ── Commercial fleet layer
+const LG_COMMERCIAL = L.layerGroup().addTo(map);
+COMMERCIAL_FLEET_ZONES.forEach(v=>{
+  const col = v.threat==='CRITICAL'?'#ff2244':v.threat==='HIGH'?'#ffaa00':'#44aaff';
+  const m = L.marker([v.lat,v.lon],{icon:commercialShipIcon(col,v.status)}).addTo(LG_COMMERCIAL);
+  const rd=v.hdg*Math.PI/180;
+  if(v.spd>0){
+    L.polyline([[v.lat,v.lon],[v.lat+Math.cos(rd)*0.8,v.lon+Math.sin(rd)*0.8]],
+      {color:col,weight:1.2,opacity:.5,dashArray:'3,4'}).addTo(LG_COMMERCIAL);
+  }
+  m.bindPopup(`
+    <div class="popup-title" style="color:${col};">⚓ ${v.name}</div>
+    <div class="popup-row"><span>TYPE</span><span class="popup-val">${v.type}</span></div>
+    <div class="popup-row"><span>OPERATOR</span><span class="popup-val">${v.airline}</span></div>
+    <div class="popup-row"><span>FLAG</span><span class="popup-val">${v.flag}</span></div>
+    <div class="popup-row"><span>ZONE</span><span style="color:${col}">${v.zone}</span></div>
+    <div class="popup-row"><span>STATUS</span><span style="color:${col};font-weight:bold">${v.status}</span></div>
+    <div class="popup-row"><span>THREAT</span><span style="color:${col}">${v.threat}</span></div>
+    <div class="popup-row"><span>SPD/HDG</span><span class="popup-val">${v.spd}kt · ${v.hdg}°</span></div>
+    <div style="margin-top:6px;color:#2a6070;line-height:1.7;">${v.detail}</div>
+    <div style="margin-top:5px;color:#1a4060;font-size:7px;font-family:Share Tech Mono,monospace;">COMMERCIAL FLEET · CONFLICT ZONE MONITOR</div>
+  `,{maxWidth:280});
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LIVE ADS-B — FIXED + MULTI-PROXY ROBUST SYSTEM
+// ═══════════════════════════════════════════════════════════════════════
+
+// CRITICAL FIX: declare allFlightStates BEFORE fetchADSB is called
+let allFlightStates = [];
+let adsbActive = true, adsbCountdown = 30, adsbRetryCount = 0;
+
+const FI = {icao24:0,callsign:1,country:2,lon:5,lat:6,baro_alt:7,on_ground:8,velocity:9,heading:10,squawk:14};
+const ADSB_BBOX = {lamin:-35,lomin:-120,lamax:65,lomax:145};
+const ADSB_BASE = `https://opensky-network.org/api/states/all?lamin=${ADSB_BBOX.lamin}&lomin=${ADSB_BBOX.lomin}&lamax=${ADSB_BBOX.lamax}&lomax=${ADSB_BBOX.lomax}`;
+
+// 5 proxy fallbacks — tries each in order
+const PROXIES = [
+  u => u,                                                          // 1. Direct
+  u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,    // 2. allorigins
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,                 // 3. corsproxy.io
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,// 4. codetabs
+  u => `https://thingproxy.freeboard.io/fetch/${u}`,              // 5. thingproxy
+];
+
+async function tryFetchADSB(){
+  for(let i=0;i<PROXIES.length;i++){
+    try{
+      const url = PROXIES[i](ADSB_BASE);
+      const r = await fetch(url,{signal:AbortSignal.timeout(9000)});
+      if(!r.ok) continue;
+      const raw = await r.json();
+      // allorigins wraps in {contents:"..."}
+      let data = raw;
+      if(raw.contents) data = JSON.parse(raw.contents);
+      if(data && Array.isArray(data.states) && data.states.length > 0){
+        adsbRetryCount = 0;
+        return data.states;
+      }
+    }catch(e){ /* try next proxy */ }
+  }
+  return null;
+}
+
+async function fetchADSB(){
+  setADSBStatus('loading');
+  const states = await tryFetchADSB();
+  if(states){
+    allFlightStates = states;
+    setADSBStatus('ok', states.length);
+    updateADSBMarkers(states);
+    renderFlightPanel(states);
+    renderFlightTrackerPanel();
+    const el=document.getElementById('ft-status');
+    if(el){el.textContent=`✓ ${states.length} AIRCRAFT · LIVE`;el.style.color='var(--grn)';}
+    const rt=document.getElementById('ft-refresh-txt');
+    if(rt) rt.textContent=`UPDATED ${new Date().toUTCString().slice(17,25)} UTC`;
+    adsbCountdown = 30;
+  } else {
+    adsbRetryCount++;
+    setADSBStatus('err');
+    adsbCountdown = Math.min(30 * adsbRetryCount, 120); // back-off up to 2 min
+    const el=document.getElementById('ft-status');
+    if(el){el.textContent='⚠ API RATE LIMITED · RETRYING…';el.style.color='var(--amb)';}
+  }
+  startADSBCountdown();
+}
+
+function setADSBStatus(s,n){
+  const el=document.getElementById('adsb-fetch-txt');
+  const badge=document.getElementById('adsb-status');
+  if(!el) return;
+  if(s==='loading'){el.textContent='⟳ FETCHING OPENSKY…';el.style.color='var(--cyn)';if(badge)badge.textContent='FETCHING…';}
+  else if(s==='ok'){el.textContent=`✓ ${n} AIRCRAFT · LIVE`;el.style.color='var(--grn)';if(badge)badge.textContent='LIVE';const lc=document.getElementById('live-count');if(lc)lc.textContent=n;}
+  else{el.textContent='⚠ RATE LIMITED · RETRYING…';el.style.color='var(--amb)';if(badge)badge.textContent='WAIT';}
+}
+
+// ── Airline identification from ICAO callsign prefix ──
+const AIRLINE_PREFIXES = {
+  'BAW':'BRITISH AIRWAYS','UAL':'UNITED AIRLINES','DAL':'DELTA AIR LINES','AAL':'AMERICAN AIRLINES',
+  'SWA':'SOUTHWEST','AFR':'AIR FRANCE','DLH':'LUFTHANSA','KLM':'KLM ROYAL DUTCH',
+  'UAE':'EMIRATES','QTR':'QATAR AIRWAYS','ETH':'ETHIOPIAN','SVA':'SAUDI ARABIAN AIRLINES',
+  'ELY':'EL AL ISRAEL','THY':'TURKISH AIRLINES','SIA':'SINGAPORE AIRLINES','CPA':'CATHAY PACIFIC',
+  'ANA':'ALL NIPPON AIRWAYS','JAL':'JAPAN AIRLINES','CSN':'CHINA SOUTHERN','CCA':'AIR CHINA',
+  'MAS':'MALAYSIA AIRLINES','THA':'THAI AIRWAYS','PAC':'AIR CANADA','RYR':'RYANAIR',
+  'EZY':'EASYJET','VLG':'VUELING','IBE':'IBERIA','TAP':'TAP AIR PORTUGAL',
+  'FIN':'FINNAIR','SAS':'SCANDINAVIAN AIRLINES','LOT':'LOT POLISH','TFL':'ARKEFLY',
+  'VOZ':'VIRGIN AUSTRALIA','QFA':'QANTAS','ANZ':'AIR NEW ZEALAND','SAA':'SOUTH AFRICAN AIRWAYS',
+  'RAM':'ROYAL AIR MAROC','MSR':'EGYPTAIR','GFA':'GULF AIR','OMA':'OMAN AIR',
+  'PIA':'PAKISTAN INTL AIRLINES','ICE':'ICELANDAIR','AZA':'ITA AIRWAYS','VKG':'THOMAS COOK',
+};
+function getAirlineFromCallsign(cs){
+  if(!cs) return null;
+  const prefix = cs.slice(0,3).toUpperCase();
+  return AIRLINE_PREFIXES[prefix] || null;
+}
+
+// ── Check if flight is over a conflict zone ──
+function getConflictZoneForFlight(lat, lon){
+  for(const c of CONFLICTS){
+    const dlat=lat-c.lat, dlon=lon-c.lon;
+    const dist=Math.sqrt(dlat*dlat+dlon*dlon)*111;
+    if(dist < c.radius/1000 * 0.6) return c;
+  }
+  return null;
+}
+
+const liveMarkers={};
+
+function altCol(a){ if(!a||a<0)return'#4488ff';if(a<3000)return'#ff9500';if(a<8000)return'#ffdd00';if(a<12000)return'#00d4f0';return'#39ff6a'; }
+
+function updateADSBMarkers(states){
+  const seen=new Set();
+  states.forEach(s=>{
+    const icao=s[FI.icao24],lat=s[FI.lat],lon=s[FI.lon];
+    if(!lat||!lon||s[FI.on_ground]) return;
+    seen.add(icao);
+    const col=altCol(s[FI.baro_alt]);
+    const hdg=s[FI.heading]||0;
+    const cs=(s[FI.callsign]||'').trim()||icao;
+    const alt=s[FI.baro_alt]?Math.round(s[FI.baro_alt])+'m':'—';
+    const spd=s[FI.velocity]?Math.round(s[FI.velocity]*1.944)+'kt':'—';
+    const airline = getAirlineFromCallsign(cs);
+    const conflict = getConflictZoneForFlight(lat,lon);
+    const squawk = s[FI.squawk]?String(s[FI.squawk]).padStart(4,'0'):null;
+    const isEmergency = squawk && ['7700','7600','7500'].includes(squawk);
+    const markerCol = isEmergency ? '#ff0000' : conflict ? '#ffaa00' : col;
+
+    const popupContent = `
+      <div class="popup-title" style="color:${markerCol};">✈ ${cs}</div>
+      ${airline?`<div class="popup-row"><span>AIRLINE</span><span style="color:var(--grn)">${airline}</span></div>`:''}
+      <div class="popup-row"><span>ICAO24</span><span class="popup-val">${icao}</span></div>
+      <div class="popup-row"><span>COUNTRY</span><span class="popup-val">${s[FI.country]||'?'}</span></div>
+      <div class="popup-row"><span>ALTITUDE</span><span style="color:${col}">${alt}</span></div>
+      <div class="popup-row"><span>SPEED</span><span class="popup-val">${spd}</span></div>
+      <div class="popup-row"><span>HEADING</span><span class="popup-val">${Math.round(hdg)}°</span></div>
+      ${squawk?`<div class="popup-row"><span>SQUAWK</span><span style="color:${isEmergency?'#ff0000':'var(--txt2)'}">${squawk}${isEmergency?' ⚠ EMERGENCY':''}</span></div>`:''}
+      ${conflict?`<div style="margin-top:6px;padding:4px 6px;background:rgba(255,100,0,.1);border:1px solid rgba(255,100,0,.4);font-family:Share Tech Mono,monospace;font-size:8px;color:var(--amb);">⚠ OVER CONFLICT ZONE: ${conflict.name}</div>`:''}
+      <div style="margin-top:5px;display:flex;gap:4px;">
+        <a href="https://www.flightradar24.com/${cs}" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:8px;padding:2px 7px;border:1px solid rgba(0,229,255,.4);color:var(--cyn);text-decoration:none;background:rgba(0,229,255,.05);">FR24 ↗</a>
+        <a href="https://www.flightaware.com/live/flight/${cs}" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:8px;padding:2px 7px;border:1px solid rgba(57,255,106,.3);color:var(--grn);text-decoration:none;background:rgba(57,255,106,.04);">FlightAware ↗</a>
+      </div>
+      <div style="margin-top:4px;color:#1e4060;font-size:7px;font-family:Share Tech Mono,monospace;">OPENSKY NETWORK · LIVE ADS-B · ${new Date().toUTCString().slice(17,25)} UTC</div>`;
+
+    if(liveMarkers[icao]){
+      liveMarkers[icao].setLatLng([lat,lon]);
+      liveMarkers[icao].setIcon(planeIcon(hdg,markerCol));
+    } else {
+      const m=L.marker([lat,lon],{icon:planeIcon(hdg,markerCol)}).addTo(LG.adsb);
+      m.bindPopup(popupContent,{maxWidth:280});
+      liveMarkers[icao]=m;
+    }
+    // Update popup if marker existed
+    if(liveMarkers[icao] && liveMarkers[icao].getPopup()){
+      liveMarkers[icao].getPopup().setContent(popupContent);
+    }
+  });
+  Object.keys(liveMarkers).forEach(k=>{if(!seen.has(k)){LG.adsb.removeLayer(liveMarkers[k]);delete liveMarkers[k];}});
+}
+
+function renderFlightPanel(states){
+  const top=states.filter(s=>!s[FI.on_ground]).slice(0,20);
+  document.getElementById('flt-list').innerHTML=top.map(s=>{
+    const cs=(s[FI.callsign]||'').trim()||s[FI.icao24];
+    const alt=s[FI.baro_alt]?Math.round(s[FI.baro_alt])+'m':'—';
+    const spd=s[FI.velocity]?Math.round(s[FI.velocity]*1.944)+'kt':'—';
+    const col=altCol(s[FI.baro_alt]);
+    const airline=getAirlineFromCallsign(cs);
+    return `<div class="flt-item"><div class="flt-cs" style="color:${col}">✈ ${cs}${airline?` <span style="color:#2a6a70;font-size:7px;">(${airline.split(' ')[0]})</span>`:''}</div><div class="flt-meta">${s[FI.country]||'?'} · ${alt} · ${spd} · ${Math.round(s[FI.heading]||0)}°</div></div>`;
+  }).join('');
+}
+
+function startADSBCountdown(){
+  clearInterval(window._adsbTimer);
+  window._adsbTimer=setInterval(()=>{
+    adsbCountdown--;
+    const el=document.getElementById('adsb-countdown');
+    if(el) el.textContent=`NEXT: ${adsbCountdown}s`;
+    const ft=document.getElementById('ft-next');
+    if(ft) ft.textContent=`NEXT: ${adsbCountdown}s`;
+    if(adsbCountdown<=0){clearInterval(window._adsbTimer);fetchADSB();}
+  },1000);
+}
+
+function toggleLayer(name){
+  layerState[name] = !layerState[name];
+  const btn = document.getElementById('lb-'+name);
+  if(layerState[name]){
+    map.addLayer(LG[name]);
+    btn.classList.add(name==='conflicts'?'on-red':name==='adsb'?'on-grn':name==='jamming'?'on-amb':'on');
+  } else {
+    map.removeLayer(LG[name]);
+    btn.classList.remove('on-red','on-grn','on-amb','on');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ICON FACTORIES
+// ═══════════════════════════════════════════════════════════════════════
+const SEV_COLORS = {critical:getComputedStyle(document.documentElement).getPropertyValue('--critical').trim()||'#ff0000',high:'#ff6600',medium:'#ffcc00',low:'#44ff88',monitor:'#00aaff'};
+
+function conflictIcon(sev, id){
+  const col = SEV_COLORS[sev]||'#ff0000';
+  const sz = sev==='critical'?32:sev==='high'?26:22;
+  return L.divIcon({
+    html:`<div class="cz-marker" style="width:${sz}px;height:${sz}px;border-color:${col};color:${col};background:${col}18;font-size:${sz===32?11:9}px;text-shadow:0 0 6px ${col};">${id.slice(0,2).toUpperCase()}</div>`,
+    className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+  });
+}
+
+function planeIcon(hdg, col='#39ff6a'){
+  return L.divIcon({
+    html:`<div style="transform:rotate(${hdg||0}deg);line-height:0;"><svg width="14" height="14" viewBox="0 0 14 14"><polygon points="7,0 9.5,11 7,9 4.5,11" fill="${col}" fill-opacity=".9" stroke="rgba(0,0,0,.4)" stroke-width=".4"/></svg></div>`,
+    className:'',iconSize:[14,14],iconAnchor:[7,7]
+  });
+}
+
+function shipIcon(col){
+  return L.divIcon({
+    html:`<svg width="12" height="14" viewBox="0 0 12 14"><polygon points="6,1 11,12 6,10 1,12" fill="${col}" fill-opacity=".9" stroke="rgba(0,0,0,.4)" stroke-width=".4"/></svg>`,
+    className:'',iconSize:[12,14],iconAnchor:[6,7]
+  });
+}
+
+function satIcon(col){
+  return L.divIcon({
+    html:`<svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="3" fill="${col}" fill-opacity=".9"/><line x1="0" y1="6" x2="4" y2="6" stroke="${col}" stroke-width=".8" opacity=".6"/><line x1="8" y1="6" x2="12" y2="6" stroke="${col}" stroke-width=".8" opacity=".6"/><line x1="6" y1="0" x2="6" y2="4" stroke="${col}" stroke-width=".8" opacity=".6"/><line x1="6" y1="8" x2="6" y2="12" stroke="${col}" stroke-width=".8" opacity=".6"/></svg>`,
+    className:'',iconSize:[12,12],iconAnchor:[6,6]
+  });
+}
+
+function commercialShipIcon(col, status){
+  const pulse = status==='SEIZED'||status==='SEIZED RISK'?'animation:blink .8s infinite;':'';
+  return L.divIcon({
+    html:`<svg width="13" height="15" viewBox="0 0 13 15" style="${pulse}"><polygon points="6.5,1 12,13 6.5,11 1,13" fill="${col}" fill-opacity=".85" stroke="rgba(0,0,0,.5)" stroke-width=".5"/><circle cx="6.5" cy="7" r="2" fill="none" stroke="${col}" stroke-width=".8" opacity=".6"/></svg>`,
+    className:'',iconSize:[13,15],iconAnchor:[6,7]
+  });
+}
+
+const layerState = {conflicts:true,adsb:true,maritime:true,satellites:true,jamming:true,bottleneck:true,infra:false};
+
+// ── OpenSeaMap live vessel tile overlay ──
+L.tileLayer('https://tiles.openseamap.org/mariners/{z}/{x}/{y}.png',
+  {maxZoom:18, opacity:.7, attribution:'© OpenSeaMap'}).addTo(map);
+L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
+  {maxZoom:18, opacity:.5, attribution:'© OpenSeaMap'}).addTo(map);
+
+// ═══════════════════════════════════════════════════════════════════════
+//  RENDER CONFLICT ZONES
+// ═══════════════════════════════════════════════════════════════════════
+const jamCircles = [];
+CONFLICTS.forEach(c=>{
+  const col = SEV_COLORS[c.sev]||'#ff0000';
+  // Radius circle
+  L.circle([c.lat,c.lon],{
+    radius:c.radius,color:col,weight:.8,
+    fillColor:col,fillOpacity:c.sev==='critical'?.07:.04,
+    opacity:.4,dashArray:c.sev==='critical'?'none':'6,4'
+  }).addTo(LG.conflicts);
+  // Icon marker
+  const m = L.marker([c.lat,c.lon],{icon:conflictIcon(c.sev,c.id)}).addTo(LG.conflicts);
+  const newsLinks = (c.sources||[]).map(s=>
+    `<a href="${s.u}" target="_blank" style="display:inline-block;margin:2px 3px 2px 0;padding:2px 7px;font-family:Share Tech Mono,monospace;font-size:8px;letter-spacing:1px;border:1px solid rgba(0,229,255,.4);color:var(--cyn);text-decoration:none;background:rgba(0,229,255,.05);" onmouseover="this.style.background='rgba(0,229,255,.12)'" onmouseout="this.style.background='rgba(0,229,255,.05)'">${s.l} ↗</a>`
+  ).join('');
+  const sourceRow = c.acled ? `<div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap;">
+    <a href="${c.acled}" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:7px;padding:1px 5px;border:1px solid #ff6600;color:#ff6600;text-decoration:none;background:rgba(255,100,0,.06);">ACLED ↗</a>
+    <a href="${c.icg}" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:7px;padding:1px 5px;border:1px solid #ffaa00;color:#ffaa00;text-decoration:none;background:rgba(255,170,0,.06);">ICG ↗</a>
+    <a href="${c.cfr}" target="_blank" style="font-family:Share Tech Mono,monospace;font-size:7px;padding:1px 5px;border:1px solid #00aaff;color:#00aaff;text-decoration:none;background:rgba(0,170,255,.06);">CFR ↗</a>
+  </div>` : '';
+  m.bindPopup(`
+    <div class="popup-title">${c.name}</div>
+    <div class="popup-row"><span>SEVERITY</span><span class="popup-sev-${c.sev}">${c.sev.toUpperCase()}</span></div>
+    <div class="popup-row"><span>TYPE</span><span class="popup-val">${c.type}</span></div>
+    <div class="popup-row"><span>ACTORS</span><span class="popup-val">${c.actors}</span></div>
+    <div class="popup-row"><span>CASUALTIES</span><span class="popup-sev-${c.sev==='critical'?'critical':'high'}">${c.deaths}</span></div>
+    <div style="margin-top:6px;color:#2a5a70;line-height:1.7;">${c.detail}</div>
+    <div style="margin-top:8px;border-top:1px solid rgba(0,100,140,.4);padding-top:6px;">
+      <div style="font-family:Share Tech Mono,monospace;font-size:7px;color:#1a5070;letter-spacing:2px;margin-bottom:4px;">📰 NEWS & OSINT SOURCES</div>
+      ${newsLinks}
+    </div>
+    ${sourceRow}
+    <div style="margin-top:6px;color:#1a4060;font-size:7px;font-family:Share Tech Mono,monospace;">DATA: ACLED · CRISISWATCH · CFR · OSINT · Updated ${new Date().toUTCString().slice(5,16)}</div>
+  `,{maxWidth:300});
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  JAMMING ZONES
+// ═══════════════════════════════════════════════════════════════════════
+JAMMING_ZONES.forEach(z=>{
+  const c1=L.circle([z.lat,z.lon],{radius:z.radius,color:z.col,weight:1.2,fillColor:z.col,fillOpacity:.05,opacity:.5,dashArray:'5,5'}).addTo(LG.jamming);
+  const c2=L.circle([z.lat,z.lon],{radius:z.radius*.5,color:z.col,weight:.5,fillColor:z.col,fillOpacity:.03,opacity:.3}).addTo(LG.jamming);
+  const dot=L.circleMarker([z.lat,z.lon],{radius:4,color:z.col,fillColor:z.col,fillOpacity:1,weight:0}).addTo(LG.jamming);
+  dot.bindPopup(`<div class="popup-title">GPS JAMMING · ${z.name}</div><div>Intensity: ${z.intensity}</div><div>Radius: ${z.radius/1000}km</div><div>Bands: L1/L2/L5 affected</div>`);
+  jamCircles.push({c1,c2,phase:Math.random()*6});
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  MARITIME ASSETS
+// ═══════════════════════════════════════════════════════════════════════
+NAVAL_ASSETS.forEach(v=>{
+  const m = L.marker([v.lat,v.lon],{icon:shipIcon(v.col)}).addTo(LG.maritime);
+  // course vector
+  const rd=v.hdg*Math.PI/180;
+  L.polyline([[v.lat,v.lon],[v.lat+Math.cos(rd)*1.5,v.lon+Math.sin(rd)*1.5]],
+    {color:v.col,weight:1,opacity:.4,dashArray:'3,3'}).addTo(LG.maritime);
+  m.bindPopup(`<div class="popup-title">${v.name}</div><div>TYPE: ${v.type}</div><div>FLAG: ${v.flag}</div><div>FORCE: ${v.force}</div><div>SPD: ${v.spd}kts · HDG: ${v.hdg}°</div>`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  CHOKEPOINTS
+// ═══════════════════════════════════════════════════════════════════════
+CHOKEPOINTS.forEach(cp=>{
+  const box=L.circleMarker([cp.lat,cp.lon],{radius:10,color:cp.col,fillColor:cp.col,fillOpacity:.15,weight:1.5}).addTo(LG.bottleneck);
+  L.marker([cp.lat,cp.lon],{icon:L.divIcon({
+    html:`<div style="color:${cp.col};font-family:Share Tech Mono,monospace;font-size:7px;white-space:nowrap;letter-spacing:1px;background:rgba(0,4,12,.8);padding:1px 4px;margin-top:12px;">${cp.name}</div>`,
+    className:'',iconAnchor:[-6,-4]
+  })}).addTo(LG.bottleneck);
+  box.bindPopup(`<div class="popup-title">${cp.name}</div><div>THREAT: <span style="color:${cp.col}">${cp.threat}</span></div><div>TRAFFIC: ${cp.traffic}</div><div>VOLUME: ${cp.daily}</div>`);
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  SATELLITE TRACKS (simplified ground tracks)
+// ═══════════════════════════════════════════════════════════════════════
+const SAT_DEFS = [
+  {inc:98.1,raan:60, col:'#00ff88',period:99, phase:.1},
+  {inc:97.8,raan:120,col:'#00e5ff',period:96, phase:.3},
+  {inc:97.4,raan:180,col:'#ffaa00',period:88, phase:.6},
+  {inc:63,  raan:240,col:'#ff9900',period:93, phase:.2},
+  {inc:35,  raan:300,col:'#ff4444',period:94, phase:.8},
+  {inc:142, raan:330,col:'#ffd700',period:91, phase:.45},
+];
+const satMarkers2 = [];
+SAT_DEFS.forEach(s=>{
+  const pts=[];
+  const earthRate=360/(24*60);
+  for(let i=0;i<=100;i++){
+    const t=(i/100)*s.period*1.5;
+    const arg=(i/100)*2*Math.PI;
+    const lat=Math.sin(arg)*s.inc*(s.inc>90?(180-s.inc)/s.inc:1);
+    const normLat=Math.max(-85,Math.min(85,lat));
+    const lon=(s.raan+s.phase*360+(i/100)*360-earthRate*t+180)%360-180;
+    pts.push([normLat,lon]);
+  }
+  // Draw in segments
+  let seg=[];
+  for(let i=0;i<pts.length;i++){
+    if(i>0&&Math.abs(pts[i][1]-pts[i-1][1])>100){
+      if(seg.length>1) L.polyline(seg,{color:s.col,weight:.7,opacity:.25,dashArray:'4,8'}).addTo(LG.satellites);
+      seg=[];
+    }
+    seg.push(pts[i]);
+  }
+  if(seg.length>1) L.polyline(seg,{color:s.col,weight:.7,opacity:.25,dashArray:'4,8'}).addTo(LG.satellites);
+  const dot=L.marker(pts[0],{icon:satIcon(s.col)}).addTo(LG.satellites);
+  satMarkers2.push({pts,dot,t:s.phase});
+});
+
+// ═══════════════════════════════════════════════════════════════════════
+//  UI POPULATION
+// ═══════════════════════════════════════════════════════════════════════
+
+// Threat meter
+(function(){
+  const boxes=document.getElementById('threat-boxes');
+  const fills=['fill-red','fill-red','fill-red','fill-red','fill-red','fill-amb','fill-amb','fill-grn'];
+  boxes.innerHTML=fills.map(f=>`<div class="t-box ${f}"></div>`).join('');
+})();
+
+// Conflict lists
+function buildConflictItem(c){
+  return `<div class="conf-item" onclick="flyToConflict('${c.id}')">
+    <div class="conf-row">
+      <div>
+        <div class="conf-name"><span class="pulse-dot pd-${c.sev==='critical'?'red':c.sev==='high'?'amb':'cyn'}" style="width:5px;height:5px;margin-right:5px;"></span>${c.name}</div>
+        <div class="conf-meta">${c.actors} · ${c.deaths}</div>
+      </div>
+      <span class="sev-badge sev-${c.sev}">${c.sev.toUpperCase()}</span>
+    </div>
+  </div>`;
+}
+
+document.getElementById('conflict-list-critical').innerHTML=CONFLICTS.filter(c=>c.sev==='critical').map(buildConflictItem).join('');
+document.getElementById('conflict-list-high').innerHTML=CONFLICTS.filter(c=>c.sev==='high').map(buildConflictItem).join('');
+document.getElementById('conflict-list-med').innerHTML=CONFLICTS.filter(c=>c.sev==='medium').slice(0,5).map(buildConflictItem).join('');
+
+// Jamming panel
+document.getElementById('jam-list-panel').innerHTML=JAMMING_ZONES.map(z=>`
+<div class="conf-item">
+  <div class="conf-row">
+    <div><div class="conf-name" style="font-size:10px;">${z.name}</div><div class="conf-meta">RADIUS: ${z.radius/1000}km</div></div>
+    <span class="sev-badge sev-${z.intensity==='CRITICAL'?'critical':z.intensity==='HIGH'?'high':'medium'}">${z.intensity}</span>
+  </div>
+</div>`).join('');
+
+// SIGINT
+document.getElementById('sigint-panel').innerHTML=SIGINT_DATA.map(d=>`
+<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(0,16,30,.8);">
+  <span style="color:var(--txt2);letter-spacing:.5px;">${d.label}</span>
+  <span style="color:var(--${d.col})">${d.val}</span>
+</div>`).join('');
+
+// Ship list
+document.getElementById('ship-list').innerHTML=NAVAL_ASSETS.map(v=>{
+  const naval=v.type!=='CARGO'&&v.type!=='TANKER';
+  return `<div class="ship-item"><div class="conf-row"><span class="ship-name" style="color:${naval?'#ff6644':'#4488ff'}">${v.name}</span><span style="font-size:7px;color:var(--txt2)">${v.flag}</span></div><div class="ship-meta">${v.type} · ${v.spd}kt · ${v.force}</div></div>`;
+}).join('');
+
+// Sat panel
+document.getElementById('sat-panel-list').innerHTML=SAT_PASSES.map(s=>`
+<div class="conf-item">
+  <div class="conf-row">
+    <div><div style="font-size:9px;color:#6ab8cc;">${s.name}</div><div class="conf-meta">${s.zone} · ${s.time} · RES ${s.res}</div></div>
+    <span class="sev-badge" style="color:#00e5ff;border-color:#00e5ff;">${s.type}</span>
+  </div>
+</div>`).join('');
+
+// Event feed
+document.getElementById('event-feed').innerHTML=EVENT_FEED_DATA.map(e=>`
+<div class="ev-item">
+  <span class="ev-time">${e.t}</span>
+  <span class="ev-type" style="background:${e.type==='airstrike'?'#ff2244':e.type==='military'?'#ff4444':e.type==='explosion'?'#ff8844':e.type==='cyber'?'#44ddff':e.type==='naval'?'#4488ff':e.type==='protest'?'#ffcc44':e.type==='diplomacy'?'#44ff88':e.type==='info'?'#00aaff':'#2a7a9a'};box-shadow:0 0 3px currentColor;"></span>
+  <span class="ev-txt-${e.type}">${e.m}</span>
+</div>`).join('');
+
+// Sparkbar
+(function(){
+  const bar=document.getElementById('sparkbar');
+  const data=[320,380,290,420,510,445,390,480,560,510,470,620,580,640,720,680,590,710,760,690,810,770,840,800,750,820,880,847,0,0];
+  const max=Math.max(...data.slice(0,-2));
+  bar.innerHTML=data.map((v,i)=>`<div class="spark" style="height:${Math.round((v/max)*100)}%;${i===data.length-3?'background:var(--red);opacity:1;':''}"></div>`).join('');
+  document.getElementById('today-events').textContent='847 events (14:00 UTC)';
+})();
+
+// Bottleneck panel
+document.getElementById('bottleneck-panel').innerHTML=CHOKEPOINTS.slice(0,5).map(c=>`
+<div class="bn-row">
+  <span class="bn-name" style="min-width:120px">${c.name}</span>
+  <div class="bn-bar-wrap"><div class="bn-bar" style="width:${c.traffic==='HIGH'?'95%':c.traffic==='REDUCED'?'35%':'75%'};background:${c.col};"></div></div>
+  <span class="bn-status" style="color:${c.col}">${c.threat}</span>
+</div>`).join('');
+
+// Dark vessels
+document.getElementById('dark-vessel-panel').innerHTML=DARK_VESSELS.map(d=>`
+<div style="display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px solid rgba(0,12,24,.8);">
+  <span style="color:${d.threat==='CRITICAL'?'var(--red)':d.threat==='HIGH'?'var(--amb)':'#ffcc44'}">${d.name}</span>
+  <span style="color:var(--txt2);font-size:7px">${d.dark} dark</span>
+</div>`).join('');
+
+// Alert log
+document.getElementById('alert-log').innerHTML=EVENT_FEED_DATA.slice(0,6).map(e=>`
+<div style="padding:2px 0;border-bottom:1px solid rgba(0,12,24,.8);color:${e.type==='airstrike'||e.type==='explosion'?'var(--red)':e.type==='naval'?'#4488ff':'var(--amb)'};">${e.t.slice(0,5)} ${e.m.slice(0,48)}…</div>`).join('');
+
+// ═══════════════════════════════════════════════════════════════════════
+//  FLY-TO ON CLICK
+// ═══════════════════════════════════════════════════════════════════════
+const conflictMap = {};
+CONFLICTS.forEach(c=>conflictMap[c.id]=c);
+function flyToConflict(id){
+  const c=conflictMap[id];
+  if(!c) return;
+  map.flyTo([c.lat,c.lon],c.sev==='critical'?6:c.sev==='high'?5:5,{duration:1.5});
+  showToast(`ZOOMING: ${c.name} · ${c.sev.toUpperCase()} · ${c.deaths} CASUALTIES`);
+}
+
+function searchConflict(e){
+  if(e.key!=='Enter') return;
+  const q=document.getElementById('search-input').value.trim().toLowerCase();
+  const hit=CONFLICTS.find(c=>c.name.toLowerCase().includes(q)||c.id.includes(q)||(c.actors||'').toLowerCase().includes(q));
+  if(hit){ flyToConflict(hit.id); document.getElementById('search-input').value=''; }
+  else { showToast('NO MATCH · TRY ANOTHER SEARCH TERM'); }
+}
+
+let toastTimer;
+function showToast(msg){
+  document.getElementById('toast-msg').textContent=msg;
+  document.getElementById('alert-toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>document.getElementById('alert-toast').classList.remove('show'),4000);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════════════
+let lastTs=0;
+function animLoop(ts){
+  requestAnimationFrame(animLoop);
+  const dt=(ts-lastTs)/1000; lastTs=ts;
+
+  // Satellite animation
+  satMarkers2.forEach(obj=>{
+    obj.t=(obj.t+dt*.008)%1;
+    const idx=Math.floor(obj.t*obj.pts.length)%obj.pts.length;
+    obj.dot.setLatLng(obj.pts[idx]);
+  });
+
+  // Jamming pulse
+  jamCircles.forEach(j=>{
+    j.phase+=dt*1.2;
+    j.c1.setStyle({fillOpacity:.04+.02*Math.sin(j.phase),opacity:.3+.2*Math.sin(j.phase+1)});
+    j.c2.setStyle({fillOpacity:.02+.01*Math.sin(j.phase+2),opacity:.2+.1*Math.sin(j.phase+3)});
+  });
+}
+requestAnimationFrame(animLoop);
+
+// ═══════════════════════════════════════════════════════════════════════
+//  CLOCK + PERIODIC UPDATES
+// ═══════════════════════════════════════════════════════════════════════
+setInterval(()=>{
+  const n=new Date();
+  const ts=n.getUTCHours().toString().padStart(2,'0')+':'+n.getUTCMinutes().toString().padStart(2,'0')+':'+n.getUTCSeconds().toString().padStart(2,'0');
+  document.getElementById('utc-clock').textContent=ts+' UTC';
+  document.getElementById('acled-sync-time').textContent=ts+' UTC';
+},500);
+
+// Simulate new event feed injection
+const extraEvents=[
+  {type:'airstrike',m:'UKRAINE: Russian Shahed drone swarm launched · 14 confirmed.'},
+  {type:'naval',    m:'RED SEA: Houthi missile salvo intercepted by USS Gravely.'},
+  {type:'military', m:'MYANMAR: AA forces advance toward Mandalay suburbs.'},
+  {type:'cyber',    m:'CYBER: Critical infra attack suspected Russian APT29 vector.'},
+  {type:'explosion',m:'GAZA: Airstrike Al-Mawasi humanitarian zone. Fatalities reported.'},
+  {type:'diplomacy',m:'UKRAINE: Zelensky briefs NATO foreign ministers. Arms package agreed.'},
+  {type:'military', m:'S.CHINA SEA: PLA PF vessel fired water cannon PHI supply boat.'},
+];
+let evIdx=0;
+setInterval(()=>{
+  const now=new Date();
+  const t=now.getUTCHours().toString().padStart(2,'0')+':'+now.getUTCMinutes().toString().padStart(2,'0')+':'+now.getUTCSeconds().toString().padStart(2,'0');
+  const ev=extraEvents[evIdx%extraEvents.length]; evIdx++;
+  const feed=document.getElementById('event-feed');
+  const div=document.createElement('div');
+  div.className='ev-item';
+  const col=ev.type==='airstrike'?'#ff2244':ev.type==='military'?'#ff4444':ev.type==='explosion'?'#ff8844':ev.type==='cyber'?'#44ddff':ev.type==='naval'?'#4488ff':ev.type==='diplomacy'?'#44ff88':'#2a7a9a';
+  div.innerHTML=`<span class="ev-time">${t}</span><span class="ev-type" style="background:${col};box-shadow:0 0 3px ${col};"></span><span style="color:${col}">${ev.m}</span>`;
+  feed.insertBefore(div,feed.firstChild);
+  while(feed.children.length>40) feed.removeChild(feed.lastChild);
+  // also push to alert log
+  const log=document.getElementById('alert-log');
+  const d2=document.createElement('div');
+  d2.style.cssText=`padding:2px 0;border-bottom:1px solid rgba(0,12,24,.8);color:${col};`;
+  d2.textContent=t.slice(0,5)+' '+ev.m.slice(0,48)+'…';
+  log.insertBefore(d2,log.firstChild);
+  while(log.children.length>8) log.removeChild(log.lastChild);
+  // toast for critical
+  if(ev.type==='airstrike'||ev.type==='explosion') showToast('⚠ '+ev.m);
+},12000);
+
+// Rotate banner messages
+const banners=[
+  '⚠ MULTIPLE CRITICAL EVENTS DETECTED · 8 ACTIVE CONFLICT ZONES',
+  '⚠ RED SEA: HOUTHI MISSILE ACTIVITY ELEVATED · BAB-EL-MANDEB RESTRICTED',
+  '⚠ UKRAINE: DRONE SWARM ALERT · AIR RAID SIRENS ACTIVE KHARKIV',
+  '⚠ GPS JAMMING: 7 ZONES ACTIVE · GNSS UNRELIABLE MIDDLE EAST/UKRAINE',
+  '⚠ DARK VESSELS: 14 AIS BLACKOUTS · STRAIT OF HORMUZ MONITORING',
+];
+let bannerIdx=0;
+setInterval(()=>{ bannerIdx=(bannerIdx+1)%banners.length; document.getElementById('phase-banner').textContent=banners[bannerIdx]; },8000);
+
+// Init ADS-B
+fetchADSB();
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LIVE FLIGHT TRACKER ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+let flightFilter = 'all';
+
+const REGIONS = {
+  mideast:  {lamin:12, lamax:40, lomin:28,  lomax:65},
+  europe:   {lamin:36, lamax:72, lomin:-12, lomax:40},
+  asia:     {lamin:10, lamax:55, lomin:65,  lomax:145},
+  americas: {lamin:-60,lamax:72, lomin:-170,lomax:-30},
+};
+
+function setFlightFilter(f){
+  flightFilter = f;
+  document.querySelectorAll('.fbtn[id^="ff-"]').forEach(b=>b.classList.remove('on-grn','on-red','on-amb','on'));
+  const btn = document.getElementById('ff-'+f);
+  if(btn) btn.classList.add(f==='squawk'||f==='conflict'?'on-red':'on-grn');
+  renderFlightTrackerPanel();
+}
+
+function getSquawkClass(sq){
+  if(!sq) return '';
+  const s = String(sq).padStart(4,'0');
+  if(s==='7700') return 'sq7700';
+  if(s==='7600') return 'sq7600';
+  if(s==='7500') return 'sq7500';
+  return '';
+}
+function getSquawkLabel(sq){
+  if(!sq) return '<span style="color:var(--txt2)">NOMINAL</span>';
+  const s = String(sq).padStart(4,'0');
+  if(s==='7700') return '<span style="color:var(--red)">⚠ EMERGENCY</span>';
+  if(s==='7600') return '<span style="color:var(--amb)">⚠ RADIO FAIL</span>';
+  if(s==='7500') return '<span style="color:#ff00ff">⚠ HIJACK</span>';
+  return `<span style="color:var(--txt2)">${s}</span>`;
+}
+
+function renderFlightTrackerPanel(){
+  if(!allFlightStates.length){
+    document.getElementById('ft-list').innerHTML='<div style="padding:20px;text-align:center;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--amb);">⟳ WAITING FOR ADS-B DATA… API FETCHING</div>';
+    return;
+  }
+  const FI2 = {icao24:0,callsign:1,country:2,lon:5,lat:6,baro_alt:7,on_ground:8,velocity:9,heading:10,squawk:14};
+
+  let states = allFlightStates.filter(s => !s[FI2.on_ground] && s[FI2.lat] && s[FI2.lon]);
+
+  // Apply filter
+  if(flightFilter === 'high')     states = states.filter(s => s[FI2.baro_alt] > 10000);
+  if(flightFilter === 'low')      states = states.filter(s => s[FI2.baro_alt] && s[FI2.baro_alt] < 3000);
+  if(flightFilter === 'squawk')   states = states.filter(s => ['7700','7600','7500'].includes(String(s[FI2.squawk]||'').padStart(4,'0')));
+  if(flightFilter === 'conflict') states = states.filter(s => getConflictZoneForFlight(s[FI2.lat],s[FI2.lon]));
+  if(REGIONS[flightFilter]){
+    const r = REGIONS[flightFilter];
+    states = states.filter(s => s[FI2.lat]>=r.lamin && s[FI2.lat]<=r.lamax && s[FI2.lon]>=r.lomin && s[FI2.lon]<=r.lomax);
+  }
+
+  // Update stats
+  const airborne = allFlightStates.filter(s=>!s[FI2.on_ground]).length;
+  const highAlt  = allFlightStates.filter(s=>!s[FI2.on_ground] && s[FI2.baro_alt]>10000).length;
+  const squawks  = allFlightStates.filter(s=>['7700','7600','7500'].includes(String(s[FI2.squawk]||'').padStart(4,'0'))).length;
+  const nations  = new Set(allFlightStates.map(s=>s[FI2.country]).filter(Boolean)).size;
+  const overConflict = allFlightStates.filter(s=>!s[FI2.on_ground]&&getConflictZoneForFlight(s[FI2.lat],s[FI2.lon])).length;
+
+  document.getElementById('ft-airborne').textContent = airborne.toLocaleString();
+  document.getElementById('ft-high-alt').textContent = highAlt.toLocaleString();
+  document.getElementById('ft-squawk').textContent   = squawks + (overConflict>0?` / ${overConflict}⚠`:'');
+  document.getElementById('ft-nations').textContent  = nations;
+  document.getElementById('ft-count').textContent    = states.length.toLocaleString();
+
+  // Squawk strip
+  const strip = document.getElementById('squawk-strip');
+  if(squawks > 0){
+    strip.classList.add('show');
+    const sq = allFlightStates.filter(s=>['7700','7600','7500'].includes(String(s[FI2.squawk]||'').padStart(4,'0')));
+    strip.innerHTML = '⚠ SQUAWK: ' + sq.map(s=>{
+      const cs=(s[FI2.callsign]||'').trim()||s[FI2.icao24];
+      const code=String(s[FI2.squawk]||'').padStart(4,'0');
+      return `<strong>${cs}</strong> [${code==='7700'?'EMERGENCY':code==='7600'?'RADIO FAIL':'HIJACK'}]`;
+    }).join(' · ');
+  } else {
+    strip.classList.remove('show');
+  }
+
+  // Render rows (top 150)
+  const rows = states.slice(0,150).map(s=>{
+    const icao = s[FI2.icao24];
+    const cs   = (s[FI2.callsign]||'').trim() || icao;
+    const alt  = s[FI2.baro_alt] ? Math.round(s[FI2.baro_alt]).toLocaleString() : '—';
+    const spd  = s[FI2.velocity] ? Math.round(s[FI2.velocity]*1.944) : '—';
+    const hdg  = s[FI2.heading]  ? Math.round(s[FI2.heading])  : '—';
+    const ctry = s[FI2.country]  || '??';
+    const col  = altCol(s[FI2.baro_alt]);
+    const sqClass = getSquawkClass(s[FI2.squawk]);
+    const sqLabel = getSquawkLabel(s[FI2.squawk]);
+    const airline = getAirlineFromCallsign(cs);
+    const conflict = getConflictZoneForFlight(s[FI2.lat],s[FI2.lon]);
+    const rowStyle = conflict && !sqClass ? 'background:rgba(255,160,0,.05);border-left:2px solid var(--amb);' : '';
+    const statusHtml = conflict
+      ? `<span style="color:var(--amb);font-size:8px;">⚠ ${conflict.name.split('–')[0].trim()}</span>`
+      : sqLabel;
+    const safeCs = cs.replace(/[^A-Z0-9\-]/gi,'');
+    return `<div class="fl-row ${sqClass}" style="${rowStyle}" onclick="flyToAircraft(${s[FI2.lat]},${s[FI2.lon]},'${safeCs}')">
+      <span class="fl-cs" style="color:${conflict?'var(--amb)':col}">✈ ${cs}</span>
+      <span style="color:var(--txt2);font-size:8px;">${airline?airline.split(' ')[0]:ctry.slice(0,8)}</span>
+      <span style="color:${col}">${alt}</span>
+      <span style="color:var(--txt2)">${spd}</span>
+      <span style="color:var(--txt2)">${hdg}°</span>
+      <span>${statusHtml}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('ft-list').innerHTML = rows ||
+    '<div style="padding:14px;text-align:center;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">NO FLIGHTS MATCH CURRENT FILTER</div>';
+}
+
+function flyToAircraft(lat, lon, cs){
+  map.flyTo([lat, lon], 8, {duration:1.2});
+  showToast(`TRACKING: ${cs} · ${lat.toFixed(2)}°N ${lon.toFixed(2)}°E`);
+  closeTrackers();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  LIVE FLEET TRACKER ENGINE
+// ═══════════════════════════════════════════════════════════════════════
+let vesselFilter = 'all';
+
+// Extended vessel database
+const ALL_VESSELS = [
+  // Carrier Strike Groups
+  {name:'USS GERALD R. FORD CVN-78',   type:'CARRIER',   flag:'🇺🇸',lat:21.0,lon:62.0, hdg:340,spd:22.0,force:'USN CSG-12',   status:'PATROL',   dark:false},
+  {name:'USS DWIGHT D. EISENHOWER CVN-69',type:'CARRIER',flag:'🇺🇸',lat:32.5,lon:34.8, hdg:270,spd:14.0,force:'USN CSG-2',    status:'PATROL',   dark:false},
+  {name:'USS HARRY S. TRUMAN CVN-75',  type:'CARRIER',   flag:'🇺🇸',lat:38.0,lon:-10.5,hdg:90, spd:18.0,force:'USN CSG-8',    status:'TRANSIT',  dark:false},
+  {name:'HMS PRINCE OF WALES R09',     type:'CARRIER',   flag:'🇬🇧',lat:36.0,lon:-8.0, hdg:90, spd:16.0,force:'RN CSG',       status:'EXERCISE', dark:false},
+  {name:'FS CHARLES DE GAULLE R91',    type:'CARRIER',   flag:'🇫🇷',lat:43.2,lon:5.5,  hdg:180,spd:18.0,force:'MN CSG',       status:'PATROL',   dark:false},
+  {name:'CSS SHANDONG CV-17',          type:'CARRIER',   flag:'🇨🇳',lat:18.5,lon:113.5,hdg:50, spd:20.0,force:'PLAN CSG',     status:'EXERCISE', dark:false},
+  {name:'JS IZUMO DDH-183',            type:'CARRIER',   flag:'🇯🇵',lat:26.0,lon:127.5,hdg:20, spd:16.0,force:'JMSDF',        status:'PATROL',   dark:false},
+  // Destroyers / Frigates
+  {name:'USS ARLEIGH BURKE DDG-51',    type:'DESTROYER', flag:'🇺🇸',lat:12.6,lon:43.8, hdg:180,spd:18.0,force:'USN',          status:'INTERCEPT',dark:false},
+  {name:'HMS DIAMOND D34',             type:'DESTROYER', flag:'🇬🇧',lat:13.2,lon:44.5, hdg:200,spd:16.0,force:'RN',           status:'ESCORT',   dark:false},
+  {name:'FS LANGUEDOC D643',           type:'FRIGATE',   flag:'🇫🇷',lat:14.1,lon:43.0, hdg:170,spd:14.0,force:'MN',           status:'PATROL',   dark:false},
+  {name:'USS COLE DDG-67',             type:'DESTROYER', flag:'🇺🇸',lat:15.0,lon:42.5, hdg:220,spd:20.0,force:'USN',          status:'PATROL',   dark:false},
+  {name:'IRGCN SAHAND F-74',           type:'FRIGATE',   flag:'🇮🇷',lat:27.5,lon:56.8, hdg:120,spd:12.0,force:'IRGCN',        status:'PATROL',   dark:false},
+  // Tankers / Cargo
+  {name:'MT BASRA WIND',               type:'TANKER',    flag:'🇮🇷',lat:29.8,lon:48.9, hdg:135,spd:8.4, force:'CIVILIAN',     status:'LOADING',  dark:false},
+  {name:'MV GALAXY LEADER',            type:'CARGO',     flag:'—', lat:14.8,lon:43.2, hdg:0,  spd:0,   force:'SEIZED-HOUTHI',status:'SEIZED',   dark:false},
+  {name:'MV RED PIONEER',              type:'CARGO',     flag:'🇲🇭',lat:25.5,lon:56.5, hdg:310,spd:11.0,force:'REROUTED',     status:'DIVERT',   dark:false},
+  {name:'MT GULF NAVIGATOR',           type:'TANKER',    flag:'🇸🇦',lat:26.2,lon:55.8, hdg:290,spd:9.5, force:'CIVILIAN',     status:'TRANSIT',  dark:false},
+  {name:'MV EASTERN COAST',            type:'CARGO',     flag:'🇸🇬',lat:12.0,lon:44.8, hdg:180,spd:7.0, force:'CIVILIAN',     status:'AVOIDING', dark:false},
+  // Dark vessels (AIS off)
+  {name:'UNKNOWN VESSEL-01',           type:'UNKNOWN',   flag:'—', lat:26.1,lon:56.8, hdg:0,  spd:0,   force:'—',            status:'AIS DARK', dark:true, darkHours:4.2},
+  {name:'IRAN VESSEL (UNCONFIRMED)',    type:'UNKNOWN',   flag:'🇮🇷',lat:27.3,lon:57.1, hdg:0,  spd:0,   force:'—',            status:'AIS DARK', dark:true, darkHours:11.3},
+  {name:'UNKNOWN VESSEL-02',           type:'UNKNOWN',   flag:'—', lat:13.1,lon:43.6, hdg:0,  spd:0,   force:'—',            status:'AIS DARK', dark:true, darkHours:2.1},
+  {name:'MV ALTAI-3 (DARK)',           type:'CARGO',     flag:'—', lat:31.9,lon:35.1, hdg:0,  spd:0,   force:'—',            status:'AIS DARK', dark:true, darkHours:6.7},
+  {name:'UNKNOWN VESSEL-03',           type:'UNKNOWN',   flag:'—', lat:12.8,lon:44.2, hdg:0,  spd:0,   force:'—',            status:'AIS DARK', dark:true, darkHours:1.8},
+];
+
+function setVesselFilter(f){
+  vesselFilter = f;
+  document.querySelectorAll('.fbtn[id^="vf-"]').forEach(b=>b.classList.remove('on','on-red','on-amb'));
+  const btn = document.getElementById('vf-'+f);
+  if(btn) btn.classList.add(f==='dark'?'on-red':f==='conflict'?'on-amb':'on');
+  renderFleetPanel();
+}
+
+function renderFleetPanel(){
+  // Combine naval + commercial conflict vessels
+  const allVessels = [...ALL_VESSELS, ...COMMERCIAL_FLEET_ZONES.map(v=>({
+    ...v, dark:false, status:v.status, force:v.zone+' ZONE'
+  }))];
+
+  let vessels = [...allVessels];
+  if(vesselFilter === 'naval')    vessels = vessels.filter(v=>['CARRIER','DESTROYER','FRIGATE','WARSHIP'].includes(v.type));
+  if(vesselFilter === 'cargo')    vessels = vessels.filter(v=>v.type==='CARGO'||v.type==='CONTAINER'||v.type==='BULK');
+  if(vesselFilter === 'tanker')   vessels = vessels.filter(v=>v.type==='TANKER');
+  if(vesselFilter === 'dark')     vessels = vessels.filter(v=>v.dark);
+  if(vesselFilter === 'conflict') vessels = vessels.filter(v=>v.zone||v.dark);
+
+  const naval    = allVessels.filter(v=>['CARRIER','DESTROYER','FRIGATE','WARSHIP'].includes(v.type)).length;
+  const cargo    = allVessels.filter(v=>['CARGO','TANKER','CONTAINER','BULK'].includes(v.type)).length;
+  const dark     = allVessels.filter(v=>v.dark).length;
+  const conflict = COMMERCIAL_FLEET_ZONES.length;
+
+  document.getElementById('fls-naval').textContent   = naval;
+  document.getElementById('fls-cargo').textContent   = cargo;
+  document.getElementById('fls-dark').textContent    = dark;
+  document.getElementById('fls-choke').textContent   = conflict;
+  document.getElementById('fleet-count').textContent = vessels.filter(v=>!v.dark).length;
+  document.getElementById('fleet-status').textContent= vessels.filter(v=>!v.dark).length + ' VESSELS TRACKED';
+
+  const typeColor = t=>{
+    if(['CARRIER','DESTROYER','FRIGATE','WARSHIP'].includes(t)) return 'var(--red)';
+    if(t==='TANKER') return 'var(--amb)';
+    if(t==='CONTAINER') return '#44aaff';
+    if(t==='UNKNOWN') return '#ff4444';
+    return '#4488ff';
+  };
+  const statusColor = s=>{
+    if(s==='AIS DARK'||s==='SEIZED') return 'var(--red)';
+    if(['DIVERT','AVOIDING','SEIZED RISK','REROUTING','SLOW STEAM'].includes(s)) return 'var(--amb)';
+    if(s==='INTERCEPT'||s==='PORT HOLD') return 'var(--red)';
+    return 'var(--grn)';
+  };
+
+  const rows = vessels.filter(v=>!v.dark).map(v=>{
+    const isCommercial = !!v.zone;
+    const threatColor  = v.threat==='CRITICAL'?'var(--red)':v.threat==='HIGH'?'var(--amb)':'var(--grn)';
+    return `<div class="vs-row${isCommercial?' commercial-vessel':''}" onclick="flyToVessel(${v.lat},${v.lon},'${v.name.replace(/'/g,'')}')">
+      <div>
+        <div class="vs-name" style="color:${isCommercial?threatColor:typeColor(v.type)}">${isCommercial?'🚢':'⚓'} ${v.name}</div>
+        <div style="font-size:7px;color:var(--txt2)">${v.force||''} ${v.flag||''}</div>
+      </div>
+      <span style="color:var(--txt2)">${v.type}</span>
+      <span style="color:var(--cyn)">${v.spd}kt</span>
+      <span style="color:var(--txt2)">${v.hdg}°</span>
+      <span style="color:${statusColor(v.status)}">${v.status}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('fleet-list').innerHTML = rows ||
+    '<div style="padding:14px;text-align:center;font-family:Share Tech Mono,monospace;font-size:9px;color:var(--txt2);">NO VESSELS MATCH FILTER</div>';
+
+  // Dark vessel section
+  const darkRows = allVessels.filter(v=>v.dark).map(v=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,0,0,.1);font-family:Share Tech Mono,monospace;font-size:8px;cursor:pointer;"
+         onclick="flyToVessel(${v.lat},${v.lon},'${v.name.replace(/'/g,'')}')">
+      <span style="color:var(--red)">${v.name}</span>
+      <span style="color:var(--txt2)">${v.lat.toFixed(1)}N ${Math.abs(v.lon).toFixed(1)}${v.lon>0?'E':'W'}</span>
+      <span style="color:var(--amb)">${v.darkHours}h DARK</span>
+      <span style="color:var(--red);border:1px solid var(--red);padding:0 4px;font-size:7px;">HIGH</span>
+    </div>`).join('');
+
+  document.getElementById('dark-vessel-tracker-list').innerHTML = darkRows;
+}
+
+function flyToVessel(lat, lon, name){
+  map.flyTo([lat, lon], 8, {duration:1.2});
+  showToast(`TRACKING VESSEL: ${name}`);
+  closeTrackers();
+}
+
+function flyToChokepoint(lat, lon){
+  map.flyTo([lat, lon], 7, {duration:1.2});
+  closeTrackers();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+//  TRACKER UI CONTROLS
+// ═══════════════════════════════════════════════════════════════════════
+function openTracker(type){
+  document.getElementById('tracker-tabs').style.display = 'flex';
+  switchTab(type);
+}
+
+function switchTab(type){
+  document.getElementById('flight-tracker-panel').classList.remove('show');
+  document.getElementById('fleet-tracker-panel').classList.remove('show');
+  document.querySelectorAll('.tab-btn').forEach(b=>{b.classList.remove('active','active-grn','active-amb');});
+
+  if(type === 'flight'){
+    document.getElementById('flight-tracker-panel').classList.add('show');
+    document.getElementById('tab-flights').classList.add('active-grn');
+    renderFlightTrackerPanel();
+  } else {
+    document.getElementById('fleet-tracker-panel').classList.add('show');
+    document.getElementById('tab-fleet').classList.add('active-amb');
+    renderFleetPanel();
+  }
+}
+
+function closeTrackers(){
+  document.getElementById('tracker-tabs').style.display = 'none';
+  document.getElementById('flight-tracker-panel').classList.remove('show');
+  document.getElementById('fleet-tracker-panel').classList.remove('show');
+}
+
+// Init fleet panel data
+renderFleetPanel();
+</script>
+</body>
+</html>
